@@ -1,0 +1,14 @@
+# posix-signal.test                                              -*- tcl -*-
+#
+#
+namespace eval ::posix::signal::test {
+    package require tcltest 2
+    namespace import ::tcltest::test
+    ::tcltest::loadTestedCommands
+    
+    package require posix::signal
+
+    ::tcltest::cleanupTests
+}
+namespace delete ::posix::signal::test
+return

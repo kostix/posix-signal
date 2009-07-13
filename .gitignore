@@ -1,0 +1,5 @@
+*.o
+*.so
+config.*
+autom4te.cache
+.*.sw?
