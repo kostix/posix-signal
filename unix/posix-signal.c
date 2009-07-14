@@ -1,4 +1,41 @@
 #include <tcl.h>
+#include <signal.h>
+
+#define SIGDECL(SIG) { SIG, #SIG }
+
+const struct {
+	int signal;
+	char *name;
+} signals[] = {
+	SIGDECL(SIGHUP),
+	SIGDECL(SIGINT),
+	SIGDECL(SIGQUIT),
+	SIGDECL(SIGILL),
+	SIGDECL(SIGABRT),
+	SIGDECL(SIGFPE),
+	SIGDECL(SIGKILL),
+	SIGDECL(SIGSEGV),
+	SIGDECL(SIGPIPE),
+	SIGDECL(SIGALRM),
+	SIGDECL(SIGTERM),
+	SIGDECL(SIGUSR1),
+	SIGDECL(SIGUSR2),
+	SIGDECL(SIGCHLD),
+	SIGDECL(SIGCONT),
+	SIGDECL(SIGSTOP),
+	SIGDECL(SIGTSTP),
+	SIGDECL(SIGTTIN),
+	SIGDECL(SIGTTOU),
+};
+
+static
+void
+InitSignalLookupTables (void) {
+	int i;
+	for (i = 0; i < sizeof(signals)/sizeof(signals[0]); ++i) {
+		printf("%s %d\n", signals[i].name, signals[i].signal);
+	}
+}
 
 static
 int
@@ -54,6 +91,8 @@ Posixsignal_Init(Tcl_Interp * interp)
 	if (Tcl_PkgRequire(interp, "Tcl", "8.1", 0) == NULL) {
 		return TCL_ERROR;
 	}
+
+	InitSignalLookupTables();
 
 	Tcl_CreateObjCommand(interp, PACKAGE_NAME,
 			Signal_Command, clientData, NULL);
