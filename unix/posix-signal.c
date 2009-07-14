@@ -42,7 +42,7 @@ Signal_Command (
 }
 
 EXTERN int
-PosixSignal_Init(Tcl_Interp * interp)
+Posixsignal_Init(Tcl_Interp * interp)
 {
 	ClientData clientData;
 
@@ -55,7 +55,7 @@ PosixSignal_Init(Tcl_Interp * interp)
 		return TCL_ERROR;
 	}
 
-	Tcl_CreateObjCommand(interp, "signal",
+	Tcl_CreateObjCommand(interp, PACKAGE_NAME,
 			Signal_Command, clientData, NULL);
 
 	if (Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION) != TCL_OK) {

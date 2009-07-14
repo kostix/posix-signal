@@ -3422,6 +3422,8 @@ AC_DEFUN([TEA_MAKE_LIB], [
     # substituted. (@@@ Might not be necessary anymore)
     #--------------------------------------------------------------------
 
+    PLAIN_PKG_NAME="`echo \"${PACKAGE_NAME}\" | sed -e 's![[^-A-Za-z0-9]]!!g'`"
+
     if test "${TEA_PLATFORM}" = "windows" ; then
 	if test "${SHARED_BUILD}" = "1" ; then
 	    # We force the unresolved linking of symbols that are really in
@@ -3430,12 +3432,12 @@ AC_DEFUN([TEA_MAKE_LIB], [
 	    if test x"${TK_BIN_DIR}" != x ; then
 		SHLIB_LD_LIBS="${SHLIB_LD_LIBS} \"`${CYGPATH} ${TK_BIN_DIR}/${TK_STUB_LIB_FILE}`\""
 	    fi
-	    eval eval "PKG_LIB_FILE=${PACKAGE_NAME}${SHARED_LIB_SUFFIX}"
+	    eval eval "PKG_LIB_FILE=${PLAIN_PKG_NAME}${SHARED_LIB_SUFFIX}"
 	else
-	    eval eval "PKG_LIB_FILE=${PACKAGE_NAME}${UNSHARED_LIB_SUFFIX}"
+	    eval eval "PKG_LIB_FILE=${PLAIN_PKG_NAME}${UNSHARED_LIB_SUFFIX}"
 	fi
 	# Some packages build their own stubs libraries
-	eval eval "PKG_STUB_LIB_FILE=${PACKAGE_NAME}stub${UNSHARED_LIB_SUFFIX}"
+	eval eval "PKG_STUB_LIB_FILE=${PLAIN_PKG_NAME}stub${UNSHARED_LIB_SUFFIX}"
 	if test "$GCC" = "yes"; then
 	    PKG_STUB_LIB_FILE=lib${PKG_STUB_LIB_FILE}
 	fi
@@ -3449,13 +3451,13 @@ AC_DEFUN([TEA_MAKE_LIB], [
 	    if test x"${TK_BIN_DIR}" != x ; then
 		SHLIB_LD_LIBS="${SHLIB_LD_LIBS} ${TK_STUB_LIB_SPEC}"
 	    fi
-	    eval eval "PKG_LIB_FILE=lib${PACKAGE_NAME}${SHARED_LIB_SUFFIX}"
+	    eval eval "PKG_LIB_FILE=lib${PLAIN_PKG_NAME}${SHARED_LIB_SUFFIX}"
 	    RANLIB=:
 	else
-	    eval eval "PKG_LIB_FILE=lib${PACKAGE_NAME}${UNSHARED_LIB_SUFFIX}"
+	    eval eval "PKG_LIB_FILE=lib${PLAIN_PKG_NAME}${UNSHARED_LIB_SUFFIX}"
 	fi
 	# Some packages build their own stubs libraries
-	eval eval "PKG_STUB_LIB_FILE=lib${PACKAGE_NAME}stub${UNSHARED_LIB_SUFFIX}"
+	eval eval "PKG_STUB_LIB_FILE=lib${PLAIN_PKG_NAME}stub${UNSHARED_LIB_SUFFIX}"
     fi
 
     # These are escaped so that only CFLAGS is picked up at configure time.
