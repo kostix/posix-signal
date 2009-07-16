@@ -30,6 +30,8 @@ const struct {
     SIGDECL(SIGTTIN),
     SIGDECL(SIGTTOU),
 };
+
+const int nsigs = sizeof(signals)/sizeof(signals[0]);
 
 static
 void
@@ -71,8 +73,6 @@ static
 void
 InitSignalHandlers (void) {
     int i, max, len;
-
-    const int nsigs = sizeof(signals)/sizeof(signals[0]);
 
     /* Find maximal signal number */
     max = 0;
@@ -117,6 +117,43 @@ GetHandlerBySignal (
     }
 }
 
+
+static const char **signames;
+
+static
+void
+InitLookupTable (void)
+{
+    int i;
+
+    const int len = nsigs + 1; // account for the terminating NULL entry
+
+    signames = (const char**) ckalloc(sizeof(signames[0]) * len);
+
+    for (i = 0; i < nsigs; ++i) {
+	signames[i] = signals[i].name;
+    }
+    signames[nsigs] = NULL;
+}
+
+static
+int
+GetSignalIdFromObj (
+    Tcl_Interp *interp,
+    Tcl_Obj *nameObj
+    )
+{
+    int res, index;
+
+    res = Tcl_GetIndexFromObj(interp, nameObj, signames,
+	    "signal name", 0, &index);
+    if (res == TCL_OK) {
+	return signals[index].signal;
+    } else {
+	return -1;
+    }
+}
+
 static
 int
 TrapSet (
@@ -137,6 +174,13 @@ TrapGet (
     Tcl_Obj *sigObj
     )
 {
+    int id;
+
+    id = GetSignalIdFromObj(interp, sigObj);
+    if (id == -1) {
+	return TCL_ERROR;
+    }
+
     return TCL_OK;
 }
 
@@ -206,6 +250,7 @@ Posixsignal_Init(Tcl_Interp * interp)
 
     InitSignalLookupTables();
     InitSignalHandlers();
+    InitLookupTable();
 
     Tcl_CreateObjCommand(interp, PACKAGE_NAME,
 	    Signal_Command, clientData, NULL);
