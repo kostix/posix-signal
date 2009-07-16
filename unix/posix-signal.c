@@ -160,9 +160,56 @@ TrapSet (
     ClientData clientData,
     Tcl_Interp *interp,
     Tcl_Obj *sigObj,
-    Tcl_Obj *cmdObj
+    Tcl_Obj *newCmdObj
     )
 {
+    int id, len;
+    Tcl_Obj *cmdObj;
+    const char *newCmdPtr;
+    PS_SignalHandler *handlerPtr;
+
+    id = GetSignalIdFromObj(interp, sigObj);
+    if (id == -1) {
+	return TCL_ERROR;
+    }
+
+    handlerPtr = handlers.items[SIGOFFSET(id)];
+
+    cmdObj = handlerPtr->cmdObj;
+
+    newCmdPtr = Tcl_GetStringFromObj(newCmdObj, &len);
+    if (len == 0) {
+	/* Remove bound script, if any */
+	if (Tcl_IsShared(cmdObj)) {
+	    cmdObj = Tcl_NewObj();
+	    Tcl_IncrRefCount(cmdObj);
+	} else {
+	    Tcl_SetStringObj(cmdObj, "", 0);
+	}
+    } else {
+	if (newCmdPtr[0] != '+') {
+	    /* Owerwrite the script with the new one */
+	    /* FIXME ideally we should check whether objv[3]
+	    * is unshared and use it directly, if it is,
+	    * to avoid copying of the script text */
+	    if (Tcl_IsShared(cmdObj)) {
+		cmdObj = Tcl_DuplicateObj(newCmdObj);
+		Tcl_IncrRefCount(cmdObj);
+	    } else {
+		Tcl_SetStringObj(cmdObj, newCmdPtr, len);
+	    }
+	} else {
+	    /* Append to the script */
+	    if (Tcl_IsShared(cmdObj)) {
+		cmdObj = Tcl_DuplicateObj(cmdObj);
+		Tcl_IncrRefCount(cmdObj);
+	    }
+	    Tcl_AppendToObj(cmdObj, "\n", -1);
+	    Tcl_AppendToObj(cmdObj, newCmdPtr + 1, len - 1);
+	}
+    }
+    handlerPtr->cmdObj = cmdObj;
+
     return TCL_OK;
 }
 
@@ -181,6 +228,8 @@ TrapGet (
 	return TCL_ERROR;
     }
 
+    Tcl_SetObjResult(interp,
+	    handlers.items[SIGOFFSET(id)]->cmdObj);
     return TCL_OK;
 }
 
