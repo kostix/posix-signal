@@ -1,7 +1,10 @@
 #include <tcl.h>
 #include <signal.h>
+#include <assert.h>
 
 #define SIGDECL(SIG) { SIG, #SIG }
+
+#define SIGOFFSET(SIG) ((SIG) - 1)
 
 const struct {
     int signal;
@@ -37,6 +40,106 @@ InitSignalLookupTables (void) {
     }
 }
 
+typedef struct {
+    Tcl_Obj *cmdObj;
+} PS_SignalHandler;
+
+typedef struct {
+    PS_SignalHandler **items;
+    int len;
+} PS_SignalHandlers;
+
+static PS_SignalHandlers handlers;
+
+static
+PS_SignalHandler*
+CreateSignalHandler (void)
+{
+    PS_SignalHandler *handlerPtr;
+    Tcl_Obj *cmdObj;
+
+    handlerPtr = (PS_SignalHandler*) ckalloc(sizeof(PS_SignalHandler));
+
+    cmdObj = Tcl_NewObj();
+    Tcl_IncrRefCount(cmdObj);
+    handlerPtr->cmdObj = cmdObj;
+
+    return handlerPtr;
+}
+
+static
+void
+InitSignalHandlers (void) {
+    int i, max, len;
+
+    const int nsigs = sizeof(signals)/sizeof(signals[0]);
+
+    /* Find maximal signal number */
+    max = 0;
+    for (i = 0; i < nsigs; ++i) {
+	int sig = signals[i].signal;
+	if (sig > max) {
+	    max = sig;
+	}
+    }
+    assert(max > 0);
+
+    /* Create table for handlers
+     * and initially set pointers to all handlers to NULL */
+
+    len = SIGOFFSET(max);
+    handlers.items = (PS_SignalHandler**) ckalloc(sizeof(handlers.items[0]) * len);
+    handlers.len = len;
+
+    for (i = 0; i < len; ++i) {
+	handlers.items[i] = NULL;
+    }
+
+    /* Create handlers for known signals */
+    for (i = 0; i < nsigs; ++i) {
+	int index = SIGOFFSET(signals[i].signal);
+	handlers.items[index] = CreateSignalHandler();
+    }	
+}
+
+static
+PS_SignalHandler*
+GetHandlerBySignal (
+    int signal
+    )
+{
+    int index = SIGOFFSET(signal);
+
+    if (0 <= index && index < handlers.len) {
+	return handlers.items[index];
+    } else {
+	return NULL;
+    }
+}
+
+static
+int
+TrapSet (
+    ClientData clientData,
+    Tcl_Interp *interp,
+    Tcl_Obj *sigObj,
+    Tcl_Obj *cmdObj
+    )
+{
+    return TCL_OK;
+}
+
+static
+int
+TrapGet (
+    ClientData clientData,
+    Tcl_Interp *interp,
+    Tcl_Obj *sigObj
+    )
+{
+    return TCL_OK;
+}
+
 static
 int
 Command_Trap (
@@ -46,7 +149,15 @@ Command_Trap (
     Tcl_Obj *const objv[]
     )
 {
-    return TCL_OK;
+    switch (objc) {
+	case 3:
+	    return TrapGet(clientData, interp, objv[2]);
+	case 4:
+	    return TrapSet(clientData, interp, objv[2], objv[3]);
+	default:
+	    Tcl_WrongNumArgs(interp, 2, objv, "signal ?command?");
+	    return TCL_ERROR;
+    }
 }
 
 static
@@ -94,6 +205,7 @@ Posixsignal_Init(Tcl_Interp * interp)
     }
 
     InitSignalLookupTables();
+    InitSignalHandlers();
 
     Tcl_CreateObjCommand(interp, PACKAGE_NAME,
 	    Signal_Command, clientData, NULL);
