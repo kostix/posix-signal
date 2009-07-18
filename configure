@@ -6569,7 +6569,7 @@ done
 #-----------------------------------------------------------------------
 
 
-    vars="unix/posix-signal.c unix/sigtables.c"
+    vars="unix/posix-signal.c unix/sigtables.c unix/trap.c"
     for i in $vars; do
 	case $i in
 	    \$*)
