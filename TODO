@@ -1,5 +1,2 @@
-* Check is it possible to tweak the TEA setup to make these
-  things work:
-  * Use "posix::signal" as the name of the package
-    (currently breaks Makefile).
-  * Use "src" as the directory for the source code.
+* Implement -block sigList option to [trap].
+  The list of signals to block is to be assigned to sa.sa_mask.
