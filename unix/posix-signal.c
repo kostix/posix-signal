@@ -2,46 +2,8 @@
 #include <signal.h>
 #include <assert.h>
 #include <stdio.h>
-
-#define SIGDECL(SIG) { SIG, #SIG }
-
-#define SIGOFFSET(SIG) ((SIG) - 1)
-
-const struct {
-    int signal;
-    char *name;
-} signals[] = {
-    SIGDECL(SIGHUP),
-    SIGDECL(SIGINT),
-    SIGDECL(SIGQUIT),
-    SIGDECL(SIGILL),
-    SIGDECL(SIGABRT),
-    SIGDECL(SIGFPE),
-    SIGDECL(SIGKILL),
-    SIGDECL(SIGSEGV),
-    SIGDECL(SIGPIPE),
-    SIGDECL(SIGALRM),
-    SIGDECL(SIGTERM),
-    SIGDECL(SIGUSR1),
-    SIGDECL(SIGUSR2),
-    SIGDECL(SIGCHLD),
-    SIGDECL(SIGCONT),
-    SIGDECL(SIGSTOP),
-    SIGDECL(SIGTSTP),
-    SIGDECL(SIGTTIN),
-    SIGDECL(SIGTTOU),
-};
-
-const int nsigs = sizeof(signals)/sizeof(signals[0]);
-
-static
-void
-InitSignalLookupTables (void) {
-    int i;
-    for (i = 0; i < sizeof(signals)/sizeof(signals[0]); ++i) {
-	printf("%s %d\n", signals[i].name, signals[i].signal);
-    }
-}
+#include "sigtables.h"
+//#include "syncpoints.h"
 
 typedef struct {
     Tcl_Interp *interp;
@@ -118,43 +80,6 @@ GetHandlerBySignal (
 	return handlers.items[index];
     } else {
 	return NULL;
-    }
-}
-
-
-static const char **signames;
-
-static
-void
-InitLookupTable (void)
-{
-    int i;
-
-    const int len = nsigs + 1; // account for the terminating NULL entry
-
-    signames = (const char**) ckalloc(sizeof(signames[0]) * len);
-
-    for (i = 0; i < nsigs; ++i) {
-	signames[i] = signals[i].name;
-    }
-    signames[nsigs] = NULL;
-}
-
-static
-int
-GetSignalIdFromObj (
-    Tcl_Interp *interp,
-    Tcl_Obj *nameObj
-    )
-{
-    int res, index;
-
-    res = Tcl_GetIndexFromObj(interp, nameObj, signames,
-	    "signal name", 0, &index);
-    if (res == TCL_OK) {
-	return signals[index].signal;
-    } else {
-	return -1;
     }
 }
 
@@ -369,9 +294,8 @@ Posixsignal_Init(Tcl_Interp * interp)
 	return TCL_ERROR;
     }
 
-    InitSignalLookupTables();
+    InitSignalTables();
     InitSignalHandlers();
-    InitLookupTable();
 
     Tcl_CreateObjCommand(interp, PACKAGE_NAME,
 	    Signal_Command, clientData, NULL);
