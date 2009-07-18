@@ -1,6 +1,7 @@
 #include <tcl.h>
 #include <signal.h>
 #include <assert.h>
+#include <stdio.h>
 
 #define SIGDECL(SIG) { SIG, #SIG }
 
@@ -43,6 +44,7 @@ InitSignalLookupTables (void) {
 }
 
 typedef struct {
+    Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
 } PS_SignalHandler;
 
@@ -61,6 +63,8 @@ CreateSignalHandler (void)
     Tcl_Obj *cmdObj;
 
     handlerPtr = (PS_SignalHandler*) ckalloc(sizeof(PS_SignalHandler));
+
+    handlerPtr->interp = NULL;
 
     cmdObj = Tcl_NewObj();
     Tcl_IncrRefCount(cmdObj);
@@ -154,6 +158,60 @@ GetSignalIdFromObj (
     }
 }
 
+static void
+ReportPosixError (
+	Tcl_Interp *interp
+	)
+{
+	const char *errStrPtr = Tcl_PosixError(interp);
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(errStrPtr, -1));
+}
+
+/* POSIX.1-2001 signal handler */
+static
+void
+SignalAction (
+    int signum,
+    siginfo_t *si,
+    void *uctx
+    )
+{
+    PS_SignalHandler *handlerPtr;
+    Tcl_Interp *interp;
+    Tcl_Obj *cmdObj;
+    int code;
+
+    handlerPtr = GetHandlerBySignal(signum);
+    if (handlerPtr == NULL) return;
+
+    /* FIXME checking interp for being NULL is lame;
+     * more robust approach for tracking handlers
+     * and which of them are "active" is needed */
+    interp = handlerPtr->interp;
+    if (interp == NULL) return;
+    cmdObj = handlerPtr->cmdObj;
+
+    code = Tcl_GlobalEvalObj(interp, cmdObj);
+    if (code == TCL_ERROR) {
+	Tcl_BackgroundError(interp);
+    }
+}
+
+static
+int
+InstallSignalHandler (
+    int signum
+    )
+{
+    struct sigaction sa;
+
+    sa.sa_flags     = SA_RESTART | SA_SIGINFO;
+    sa.sa_sigaction = &SignalAction;
+    sigemptyset(&sa.sa_mask);
+
+    return sigaction(signum, &sa, NULL);
+}
+
 static
 int
 TrapSet (
@@ -163,7 +221,7 @@ TrapSet (
     Tcl_Obj *newCmdObj
     )
 {
-    int id, len;
+    int id, len, res;
     Tcl_Obj *cmdObj;
     const char *newCmdPtr;
     PS_SignalHandler *handlerPtr;
@@ -181,11 +239,13 @@ TrapSet (
     if (len == 0) {
 	/* Remove bound script, if any */
 	if (Tcl_IsShared(cmdObj)) {
+	    Tcl_DecrRefCount(cmdObj);
 	    cmdObj = Tcl_NewObj();
 	    Tcl_IncrRefCount(cmdObj);
 	} else {
 	    Tcl_SetStringObj(cmdObj, "", 0);
 	}
+	handlerPtr->interp = NULL;
     } else {
 	if (newCmdPtr[0] != '+') {
 	    /* Owerwrite the script with the new one */
@@ -193,6 +253,7 @@ TrapSet (
 	    * is unshared and use it directly, if it is,
 	    * to avoid copying of the script text */
 	    if (Tcl_IsShared(cmdObj)) {
+		Tcl_DecrRefCount(cmdObj);
 		cmdObj = Tcl_DuplicateObj(newCmdObj);
 		Tcl_IncrRefCount(cmdObj);
 	    } else {
@@ -201,14 +262,25 @@ TrapSet (
 	} else {
 	    /* Append to the script */
 	    if (Tcl_IsShared(cmdObj)) {
+		Tcl_DecrRefCount(cmdObj);
 		cmdObj = Tcl_DuplicateObj(cmdObj);
 		Tcl_IncrRefCount(cmdObj);
 	    }
 	    Tcl_AppendToObj(cmdObj, "\n", -1);
 	    Tcl_AppendToObj(cmdObj, newCmdPtr + 1, len - 1);
 	}
+	handlerPtr->interp = interp;
     }
     handlerPtr->cmdObj = cmdObj;
+
+    Tcl_SetErrno(0);
+    res = InstallSignalHandler(id);
+    if (res != 0) {
+	/* FIXME ideally we should somehow revert changes
+	 * made to cmdObj */
+	ReportPosixError(interp);
+	return TCL_ERROR;
+    }
 
     return TCL_OK;
 }
