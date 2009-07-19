@@ -5,6 +5,11 @@ typedef struct {
     char *name;
 } Signal;
 
+typedef struct {
+    int len;
+    int items[];
+} SignalVector;
+
 extern const Signal signals[];
 extern const int nsigs;
 
@@ -12,6 +17,14 @@ extern const int nsigs;
 
 void
 InitSignalTables (void);
+
+SignalVector*
+CreateSignalVector (void);
+
+void
+FreeSignalVector(
+    SignalVector *svPtr
+    );
 
 int
 GetSignalIdFromObj (

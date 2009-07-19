@@ -1,5 +1,6 @@
 #include <tcl.h>
 #include <signal.h>
+#include <assert.h>
 #include "sigtables.h"
 
 #define SIGDECL(SIG) { SIG, #SIG }
@@ -45,6 +46,51 @@ InitLookupTable (void)
 	signames[i] = signals[i].name;
     }
     signames[nsigs] = NULL;
+}
+
+MODULE_SCOPE
+SignalVector*
+CreateSignalVector (void)
+{
+    int i, max, len, nbytes;
+    SignalVector *svPtr;
+
+    /* Find maximal signal number */
+    max = 0;
+    for (i = 0; i < nsigs; ++i) {
+	int sig = signals[i].signal;
+	if (sig > max) {
+	    max = sig;
+	}
+    }
+    assert(max > 0);
+
+    /* Create a vector of integers to hold the number
+     * of elements one less that the maximal signal number */
+    len = SIGOFFSET(max);
+    nbytes = sizeof(*svPtr) + sizeof(svPtr->items[0]) * len;
+    svPtr = (SignalVector*) ckalloc(nbytes);
+    svPtr->len = len;
+    for (i = 0; i < len; ++i) {
+	svPtr->items[i] = 0;
+    }
+
+    /* Create handlers for known signals */
+    for (i = 0; i < nsigs; ++i) {
+	int index = SIGOFFSET(signals[i].signal);
+	svPtr->items[index] = 1;
+    }	
+
+    return svPtr;
+}
+
+MODULE_SCOPE
+void
+FreeSignalVector(
+    SignalVector *svPtr
+    )
+{
+    ckfree((char*) svPtr);
 }
 
 MODULE_SCOPE
