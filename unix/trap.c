@@ -63,6 +63,10 @@ TrapSet (
     SetEventHandler(id, interp, newCmdObj);
     UnlockEventHandlers();
 
+    LockSyncPoints();
+    SetSyncPoint(id);
+    UnlockSyncPoints();
+
     Tcl_SetErrno(0);
     res = InstallSignalHandler(id);
     if (res != 0) {

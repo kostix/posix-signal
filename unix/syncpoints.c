@@ -65,6 +65,7 @@ MODULE_SCOPE
 void
 _UnlockSyncPoints (void)
 {
+    Tcl_ConditionNotify(&spointsCV);
     Tcl_MutexUnlock(&spointsLock);
 }
 
@@ -113,12 +114,11 @@ SignalSyncPoint (
 {
     SyncPoint *spointPtr;
 
-    const int index = SIGOFFSET(signum);
-
-    spointPtr = syncpoints[index];
-    ++spointPtr->signaled;
-
-    WakeManagerThread();
+    spointPtr = syncpoints[SIGOFFSET(signum)];
+    if (spointPtr != NULL) {
+	++spointPtr->signaled;
+	WakeManagerThread();
+    }
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
