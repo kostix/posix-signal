@@ -73,11 +73,12 @@ MODULE_SCOPE
 void
 InitSyncPoints (void)
 {
-    int i;
+    int i, len;
 
-    syncpoints = (SyncPoint**) ckalloc(sizeof(SyncPoint*) * nsigs);
+    len = SIGOFFSET(max_signum);
+    syncpoints = (SyncPoint**) ckalloc(sizeof(SyncPoint*) * len);
 
-    for (i = 0; i < nsigs; ++i) {
+    for (i = 0; i < len; ++i) {
 	syncpoints[i] = NULL;
     }
 }

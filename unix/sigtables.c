@@ -30,6 +30,10 @@ signals[] = {
 
 const int nsigs = sizeof(signals)/sizeof(signals[0]);
 
+/* Maximal signal number among those supported by the
+ * system this package was compiled for */
+int max_signum;
+
 static const char **signames;
 
 static
@@ -52,22 +56,12 @@ MODULE_SCOPE
 SignalVector*
 CreateSignalVector (void)
 {
-    int i, max, len, nbytes;
+    int i, len, nbytes;
     SignalVector *svPtr;
-
-    /* Find maximal signal number */
-    max = 0;
-    for (i = 0; i < nsigs; ++i) {
-	int sig = signals[i].signal;
-	if (sig > max) {
-	    max = sig;
-	}
-    }
-    assert(max > 0);
 
     /* Create a vector of integers to hold the number
      * of elements one less that the maximal signal number */
-    len = SIGOFFSET(max);
+    len = SIGOFFSET(max_signum);
     nbytes = sizeof(*svPtr) + sizeof(svPtr->items[0]) * len;
     svPtr = (SignalVector*) ckalloc(nbytes);
     svPtr->len = len;
@@ -97,6 +91,19 @@ MODULE_SCOPE
 void
 InitSignalTables (void)
 {
+    int i, max;
+
+    /* Find maximal signal number */
+    max = 0;
+    for (i = 0; i < nsigs; ++i) {
+	int sig = signals[i].signal;
+	if (sig > max) {
+	    max = sig;
+	}
+    }
+    assert(max > 0);
+    max_signum = max;
+
     InitLookupTable();
 }
 

@@ -114,24 +114,13 @@ DeleteEvent (
 
 MODULE_SCOPE
 void
-InitEventHandlers (void) {
-    int i, max, len;
+InitEventHandlers (void)
+{
+    int i, len, nbytes;
 
-    /* Find maximal signal number */
-    max = 0;
-    for (i = 0; i < nsigs; ++i) {
-	int sig = signals[i].signal;
-	if (sig > max) {
-	    max = sig;
-	}
-    }
-    assert(max > 0);
-
-    /* Create table for handlers
-     * and initially set pointers to all handlers to NULL */
-
-    len = SIGOFFSET(max);
-    handlers.items = (PS_SignalHandler**) ckalloc(sizeof(handlers.items[0]) * len);
+    len = SIGOFFSET(max_signum);
+    nbytes = sizeof(handlers.items[0]) * len;
+    handlers.items = (PS_SignalHandler**) ckalloc(nbytes);
     handlers.len = len;
 
     for (i = 0; i < len; ++i) {

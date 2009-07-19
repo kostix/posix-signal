@@ -13,6 +13,8 @@ typedef struct {
 extern const Signal signals[];
 extern const int nsigs;
 
+extern int max_signum;
+
 #define SIGOFFSET(SIG) ((SIG) - 1)
 
 void
