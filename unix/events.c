@@ -4,6 +4,7 @@
 #include "events.h"
 
 typedef struct {
+    Tcl_ThreadId threadId;
     Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
 } PS_SignalHandler;
@@ -54,6 +55,7 @@ CreateSignalHandler (void)
 
     handlerPtr = (PS_SignalHandler*) ckalloc(sizeof(PS_SignalHandler));
 
+    handlerPtr->threadId = Tcl_GetCurrentThread();
     handlerPtr->interp = NULL;
 
     cmdObj = Tcl_NewObj();
@@ -75,18 +77,24 @@ SignalEventHandler (
     PS_SignalHandler *handlerPtr;
     Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
-    int code;
+    int valid, code;
 
     sigEvPtr = (SignalEvent*) evPtr;
 
+    LockEventHandlers();
     handlerPtr = handlers.items[SIGOFFSET(sigEvPtr->signum)];
+    valid = handlerPtr->threadId == sigEvPtr->threadId;
+    if (valid) {
+	interp = handlerPtr->interp;
+	cmdObj = handlerPtr->cmdObj;
+    }
+    UnlockEventHandlers();
 
-    interp = handlerPtr->interp;
-    cmdObj = handlerPtr->cmdObj;
-
-    code = Tcl_GlobalEvalObj(interp, cmdObj);
-    if (code == TCL_ERROR) {
-	Tcl_BackgroundError(interp);
+    if (valid) {
+	code = Tcl_GlobalEvalObj(interp, cmdObj);
+	if (code == TCL_ERROR) {
+	    Tcl_BackgroundError(interp);
+	}
     }
 
     return 1;
@@ -192,6 +200,8 @@ SetEventHandler (
 	handlerPtr->interp = interp;
     }
     handlerPtr->cmdObj = cmdObj;
+
+    handlerPtr->threadId = Tcl_GetCurrentThread();
 }
 
 
