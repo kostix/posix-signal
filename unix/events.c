@@ -65,33 +65,6 @@ CreateSignalHandler (void)
 
 
 static
-void
-ToRemove_EventHandler (void)
-{
-#if 0
-    PS_SignalHandler *handlerPtr;
-    Tcl_Interp *interp;
-    Tcl_Obj *cmdObj;
-    int code;
-
-    handlerPtr = GetHandlerBySignal(signum);
-    if (handlerPtr == NULL) return;
-
-    /* FIXME checking interp for being NULL is lame;
-     * more robust approach for tracking handlers
-     * and which of them are "active" is needed */
-    interp = handlerPtr->interp;
-    if (interp == NULL) return;
-    cmdObj = handlerPtr->cmdObj;
-
-    code = Tcl_GlobalEvalObj(interp, cmdObj);
-    if (code == TCL_ERROR) {
-	Tcl_BackgroundError(interp);
-    }
-#endif
-}
-
-static
 int
 SignalEventHandler (
     Tcl_Event *evPtr,
@@ -99,8 +72,22 @@ SignalEventHandler (
     )
 {
     SignalEvent *sigEvPtr;
+    PS_SignalHandler *handlerPtr;
+    Tcl_Interp *interp;
+    Tcl_Obj *cmdObj;
+    int code;
 
     sigEvPtr = (SignalEvent*) evPtr;
+
+    handlerPtr = handlers.items[SIGOFFSET(sigEvPtr->signum)];
+
+    interp = handlerPtr->interp;
+    cmdObj = handlerPtr->cmdObj;
+
+    code = Tcl_GlobalEvalObj(interp, cmdObj);
+    if (code == TCL_ERROR) {
+	Tcl_BackgroundError(interp);
+    }
 
     return 1;
 }
