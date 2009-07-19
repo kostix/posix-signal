@@ -71,8 +71,11 @@ CreateSignalVector (void)
 
     /* Create handlers for known signals */
     for (i = 0; i < nsigs; ++i) {
-	int index = SIGOFFSET(signals[i].signal);
-	svPtr->items[index] = 1;
+	int sig = signals[i].signal;
+	if (sig != SIGINT && sig != SIGKILL) {
+	    int index = SIGOFFSET(sig);
+	    svPtr->items[index] = 1;
+	}
     }	
 
     return svPtr;
