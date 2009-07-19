@@ -3,8 +3,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include "sigtables.h"
-#include "trap.h"
 #include "syncpoints.h"
+#include "events.h"
+#include "trap.h"
 
 static
 int
@@ -51,7 +52,7 @@ Posixsignal_Init(Tcl_Interp * interp)
     }
 
     InitSignalTables();
-    InitSignalHandlers();
+    InitEventHandlers();
     InitSyncPoints();
 
     Tcl_CreateObjCommand(interp, PACKAGE_NAME,

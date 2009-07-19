@@ -1,8 +1,5 @@
 #ifndef __POSIX_SIGNAL_TRAP_H
 
-void
-InitSignalHandlers (void);
-
 int
 Command_Trap (
     ClientData clientData,

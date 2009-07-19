@@ -1,21 +1,9 @@
 #include <tcl.h>
 #include <signal.h>
-#include <assert.h>
-#include <stdio.h>
 #include "sigtables.h"
+#include "syncpoints.h"
+#include "events.h"
 #include "trap.h"
-
-typedef struct {
-    Tcl_Interp *interp;
-    Tcl_Obj *cmdObj;
-} PS_SignalHandler;
-
-typedef struct {
-    PS_SignalHandler **items;
-    int len;
-} PS_SignalHandlers;
-
-static PS_SignalHandlers handlers;
 
 static void
 ReportPosixError (
@@ -24,39 +12,6 @@ ReportPosixError (
 {
     const char *errStrPtr = Tcl_PosixError(interp);
     Tcl_SetObjResult(interp, Tcl_NewStringObj(errStrPtr, -1));
-}
-
-static
-PS_SignalHandler*
-CreateSignalHandler (void)
-{
-    PS_SignalHandler *handlerPtr;
-    Tcl_Obj *cmdObj;
-
-    handlerPtr = (PS_SignalHandler*) ckalloc(sizeof(PS_SignalHandler));
-
-    handlerPtr->interp = NULL;
-
-    cmdObj = Tcl_NewObj();
-    Tcl_IncrRefCount(cmdObj);
-    handlerPtr->cmdObj = cmdObj;
-
-    return handlerPtr;
-}
-
-static
-PS_SignalHandler*
-GetHandlerBySignal (
-    int signal
-    )
-{
-    int index = SIGOFFSET(signal);
-
-    if (0 <= index && index < handlers.len) {
-	return handlers.items[index];
-    } else {
-	return NULL;
-    }
 }
 
 /* POSIX.1-2001 signal handler */
@@ -68,25 +23,9 @@ SignalAction (
     void *uctx
     )
 {
-    PS_SignalHandler *handlerPtr;
-    Tcl_Interp *interp;
-    Tcl_Obj *cmdObj;
-    int code;
-
-    handlerPtr = GetHandlerBySignal(signum);
-    if (handlerPtr == NULL) return;
-
-    /* FIXME checking interp for being NULL is lame;
-     * more robust approach for tracking handlers
-     * and which of them are "active" is needed */
-    interp = handlerPtr->interp;
-    if (interp == NULL) return;
-    cmdObj = handlerPtr->cmdObj;
-
-    code = Tcl_GlobalEvalObj(interp, cmdObj);
-    if (code == TCL_ERROR) {
-	Tcl_BackgroundError(interp);
-    }
+    LockSyncPoints();
+    SignalSyncPoint(signum);
+    UnlockSyncPoints();
 }
 
 static
@@ -113,57 +52,16 @@ TrapSet (
     Tcl_Obj *newCmdObj
     )
 {
-    int id, len, res;
-    Tcl_Obj *cmdObj;
-    const char *newCmdPtr;
-    PS_SignalHandler *handlerPtr;
+    int id, res;
 
     id = GetSignalIdFromObj(interp, sigObj);
     if (id == -1) {
 	return TCL_ERROR;
     }
 
-    handlerPtr = handlers.items[SIGOFFSET(id)];
-
-    cmdObj = handlerPtr->cmdObj;
-
-    newCmdPtr = Tcl_GetStringFromObj(newCmdObj, &len);
-    if (len == 0) {
-	/* Remove bound script, if any */
-	if (Tcl_IsShared(cmdObj)) {
-	    Tcl_DecrRefCount(cmdObj);
-	    cmdObj = Tcl_NewObj();
-	    Tcl_IncrRefCount(cmdObj);
-	} else {
-	    Tcl_SetStringObj(cmdObj, "", 0);
-	}
-	handlerPtr->interp = NULL;
-    } else {
-	if (newCmdPtr[0] != '+') {
-	    /* Owerwrite the script with the new one */
-	    /* FIXME ideally we should check whether objv[3]
-	    * is unshared and use it directly, if it is,
-	    * to avoid copying of the script text */
-	    if (Tcl_IsShared(cmdObj)) {
-		Tcl_DecrRefCount(cmdObj);
-		cmdObj = Tcl_DuplicateObj(newCmdObj);
-		Tcl_IncrRefCount(cmdObj);
-	    } else {
-		Tcl_SetStringObj(cmdObj, newCmdPtr, len);
-	    }
-	} else {
-	    /* Append to the script */
-	    if (Tcl_IsShared(cmdObj)) {
-		Tcl_DecrRefCount(cmdObj);
-		cmdObj = Tcl_DuplicateObj(cmdObj);
-		Tcl_IncrRefCount(cmdObj);
-	    }
-	    Tcl_AppendToObj(cmdObj, "\n", -1);
-	    Tcl_AppendToObj(cmdObj, newCmdPtr + 1, len - 1);
-	}
-	handlerPtr->interp = interp;
-    }
-    handlerPtr->cmdObj = cmdObj;
+    LockEventHandlers();
+    SetEventHandler(id, interp, newCmdObj);
+    UnlockEventHandlers();
 
     Tcl_SetErrno(0);
     res = InstallSignalHandler(id);
@@ -186,50 +84,19 @@ TrapGet (
     )
 {
     int id;
+    Tcl_Obj *cmdObj;
 
     id = GetSignalIdFromObj(interp, sigObj);
     if (id == -1) {
 	return TCL_ERROR;
     }
 
-    Tcl_SetObjResult(interp,
-	    handlers.items[SIGOFFSET(id)]->cmdObj);
+    cmdObj = GetEventHandlerCommand(id);
+    if (cmdObj != NULL) {
+	Tcl_SetObjResult(interp, cmdObj);
+    }
     return TCL_OK;
 }
-
-MODULE_SCOPE
-void
-InitSignalHandlers (void) {
-    int i, max, len;
-
-    /* Find maximal signal number */
-    max = 0;
-    for (i = 0; i < nsigs; ++i) {
-	int sig = signals[i].signal;
-	if (sig > max) {
-	    max = sig;
-	}
-    }
-    assert(max > 0);
-
-    /* Create table for handlers
-     * and initially set pointers to all handlers to NULL */
-
-    len = SIGOFFSET(max);
-    handlers.items = (PS_SignalHandler**) ckalloc(sizeof(handlers.items[0]) * len);
-    handlers.len = len;
-
-    for (i = 0; i < len; ++i) {
-	handlers.items[i] = NULL;
-    }
-
-    /* Create handlers for known signals */
-    for (i = 0; i < nsigs; ++i) {
-	int index = SIGOFFSET(signals[i].signal);
-	handlers.items[index] = CreateSignalHandler();
-    }	
-}
-
 
 MODULE_SCOPE
 int
