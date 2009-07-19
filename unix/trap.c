@@ -59,6 +59,16 @@ TrapSet (
 	return TCL_ERROR;
     }
 
+    /* TODO SetEventHandler() should return some
+     * flag telling us whether the new script was
+     * installed/modified or deleted. In the latter
+     * case we should delete the syncpoint and
+     * change signal disposition to SIG_DFL.
+     * Note that this looks like a ternary logic:
+     * o Script is set
+     * o Script is deleted
+     * o No change
+     */
     LockEventHandlers();
     SetEventHandler(id, interp, newCmdObj);
     UnlockEventHandlers();
