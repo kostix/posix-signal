@@ -106,6 +106,17 @@ SignalEventHandler (
 }
 
 
+static
+int
+DeleteEvent (
+    Tcl_Event *evPtr,
+    ClientData clientData
+    )
+{
+    return evPtr->proc == SignalEventHandler;
+}
+
+
 MODULE_SCOPE
 void
 InitEventHandlers (void) {
@@ -230,6 +241,14 @@ CreateSignalEvent (
     evPtr->signum = signum;
 
     return evPtr;
+}
+
+
+MODULE_SCOPE
+void
+DeleteThreadEvents (void)
+{
+    Tcl_DeleteEvents(DeleteEvent, NULL);
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
