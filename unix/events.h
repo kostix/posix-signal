@@ -1,5 +1,16 @@
 #ifndef __POSIX_SIGNAL_EVENTS_H
 
+/* NOTE this struct will possibly be a part of the
+ * public API (and stubs), so it possibly must not
+ * have #ifdef'ed parts. Therefore, we include
+ * the threadId field event for non-threaded builds,
+ * in which it is to be ignored */
+typedef struct {
+    Tcl_Event event;
+    Tcl_ThreadId threadId;
+    int signum;
+} SignalEvent;
+
 #ifdef TCL_THREADS
 void
 _LockEventHandlers (void);
@@ -28,6 +39,12 @@ SetEventHandler (
 
 Tcl_Obj*
 GetEventHandlerCommand (
+    int signum
+    );
+
+SignalEvent*
+CreateSignalEvent (
+    Tcl_ThreadId threadId,
     int signum
     );
 

@@ -2,6 +2,7 @@
 #include <assert.h>
 #include "sigtables.h"
 #include "events.h"
+#include <stdio.h>
 
 typedef struct {
     Tcl_ThreadId threadId;
@@ -34,17 +35,6 @@ _UnlockEventHandlers (void)
     Tcl_MutexUnlock(&handlersLock);
 }
 #endif
-
-/* NOTE this struct will possibly be a part of the
- * public API (and stubs), so it possibly must not
- * have #ifdef'ed parts. Therefore, we include
- * the threadId field event for non-threaded builds,
- * in which it is to be ignored */
-typedef struct {
-    Tcl_Event event;
-    Tcl_ThreadId threadId;
-    int signum;
-} SignalEvent;
 
 static
 PS_SignalHandler*
@@ -80,6 +70,8 @@ SignalEventHandler (
     int valid, code;
 
     sigEvPtr = (SignalEvent*) evPtr;
+    printf("Rcvd %d in %x\n",
+	    sigEvPtr->signum, sigEvPtr->threadId);
 
     LockEventHandlers();
     handlerPtr = handlers.items[SIGOFFSET(sigEvPtr->signum)];
