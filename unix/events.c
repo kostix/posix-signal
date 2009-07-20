@@ -135,10 +135,10 @@ InitEventHandlers (void)
 }
 
 
-MODULE_SCOPE
+static
 void
-SetEventHandler (
-    int signum,
+Original_SetEventHandler (
+    PS_SignalHandler *handlerPtr,
     Tcl_Interp *interp,
     Tcl_Obj *newCmdObj
     )
@@ -146,9 +146,6 @@ SetEventHandler (
     int len;
     Tcl_Obj *cmdObj;
     const char *newCmdPtr;
-    PS_SignalHandler *handlerPtr;
-
-    handlerPtr = handlers.items[SIGOFFSET(signum)];
 
     cmdObj = handlerPtr->cmdObj;
 
@@ -189,8 +186,33 @@ SetEventHandler (
 	handlerPtr->interp = interp;
     }
     handlerPtr->cmdObj = cmdObj;
+}
 
-    handlerPtr->threadId = Tcl_GetCurrentThread();
+
+MODULE_SCOPE
+void
+SetEventHandler (
+    int signum,
+    Tcl_Interp *interp,
+    Tcl_Obj *newCmdObj
+    )
+{
+    PS_SignalHandler *handlerPtr;
+    Tcl_ThreadId threadId;
+
+    handlerPtr = handlers.items[SIGOFFSET(signum)];
+
+    Tcl_DecrRefCount(handlerPtr->cmdObj);
+
+    threadId = Tcl_GetCurrentThread();
+    if (handlerPtr->threadId != threadId) {
+	newCmdObj = Tcl_DuplicateObj(newCmdObj);
+	handlerPtr->threadId = threadId;
+	
+    }
+
+    Tcl_IncrRefCount(newCmdObj);
+    handlerPtr->cmdObj = newCmdObj;
 }
 
 
@@ -203,10 +225,16 @@ GetEventHandlerCommand (
     PS_SignalHandler *handlerPtr;
 
     handlerPtr = handlers.items[SIGOFFSET(signum)];
+
     if (handlerPtr == NULL) {
 	return NULL;
     } else {
-	return handlerPtr->cmdObj;
+	Tcl_ThreadId threadId = Tcl_GetCurrentThread();
+	if (handlerPtr->threadId == threadId) {
+	    return handlerPtr->cmdObj;
+	} else {
+	    return Tcl_DuplicateObj(handlerPtr->cmdObj);
+	}
     }
 }
 
