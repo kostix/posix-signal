@@ -1,2 +1,49 @@
+* Handling of command objects bound to event handlers
+  should be closely considered: it seems that Tcl_Objs
+  cannot be blindly shared between threads; for instance:
+  - an event handler of a certain thread locks the list
+    of event handlers, gets the command object then
+    unlocks the list then executes the command from the
+    extracted object while having no locks
+    (this is needed as the command might lead to the
+    deletion of the event handler which requires
+    aqcuisition of the same lock, thus creating
+    a deadlock).
+  - some other code in the same thread at the same time
+    decides to remove the event handler.
+    This will require decrementing of the refcount of
+    the command object.
+    Therefore, the command object might be accessed
+    by different threads at the same time with
+    unpredictable results (as, for instance,
+    Tcl_GlobalEvalObj might change the internal rep.
+    of that object).
+
+  There are conceptually only two operations on
+  the command object,
+  - modification (incl. setting to an empty string);
+  - reading.
+
+  Possibly the only way to go is to manage the command
+  objects using a separate thread; all modifications
+  to the command objects go either via events
+  or lock + command + wake + unlock sequence.
+  Copying of objects must be employed, i.e. after the
+  command object is "sent" to the manager thread,
+  the thread which created this object must assume
+  it lost the ownership of this object and does not
+  control its lifecycle anymore.
+  "Getting" of command object out of the controlling
+  thread also must employ unconditional cloning
+  under the protection of a lock.
+
+* Do we really need signal vector for initialization?
+  Currently only creation of the table of event handlers
+  could benefit from it, and the elements of the
+  table of syncpoints are initially initialized to NULL.
+  On the other hand, this might prove as being a more
+  universal approach, especially if the table of syncpoints
+  will change its format.
+
 * Implement -block sigList option to [trap].
   The list of signals to block is to be assigned to sa.sa_mask.
