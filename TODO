@@ -1,3 +1,7 @@
+* Looks like our package fails to load after the
+  Thread package is loaded while current dir
+  appears to be unchanged.
+
 * Handling of command objects bound to event handlers
   should be closely considered: it seems that Tcl_Objs
   cannot be blindly shared between threads; for instance:
@@ -36,6 +40,35 @@
   "Getting" of command object out of the controlling
   thread also must employ unconditional cloning
   under the protection of a lock.
+
+* Another look at command object management after
+  implementaion of a simplified approach
+  made in commit c6c88be4f4706aa78c980db4b51010db5d0c89f1.
+
+  While sharing of the objects at the read/modify time
+  seems to be solved, a problem still remains:
+  when the event handler executes the command object's
+  script, this object is not protected by any locks
+  (which is intentional, as that script can delete the
+  handler holding the object).
+  If at this time another thread decides to replace
+  this object in the handler, and decrs its refcount
+  (as implemented now), bad things happen.
+
+  The problem is two-fold:
+  * On one hand, the thread intending to modify the command
+    object must not mess with it when it's not under the lock.
+  * The owner thread has the same restriction.
+
+  The solution is unclear.
+  * Replace the object w/o decrementing its reference count and
+    notify the owner thread that it lost the ownership on
+    the handler (with TCL_QUEUE_HEAD)?
+  * Implement arbiter thread which owns all the command objects
+    and reading/writing of objects goes strictly by copying
+    them across that thread boundary (unshared objects can possibly
+    be transferred as is, if Tcl has the global object pool).
+  * Study how "channel transfer" is implemented in the Thread ext?
 
 * Do we really need signal vector for initialization?
   Currently only creation of the table of event handlers
