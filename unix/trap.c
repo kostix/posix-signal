@@ -69,9 +69,7 @@ TrapSet (
      * o Script is deleted
      * o No change
      */
-    LockEventHandlers();
     SetEventHandler(id, interp, newCmdObj);
-    UnlockEventHandlers();
 
     LockSyncPoints();
     SetSyncPoint(id);

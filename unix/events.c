@@ -5,36 +5,34 @@
 #include <stdio.h>
 
 typedef struct {
-    Tcl_ThreadId threadId;
     Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
 } PS_SignalHandler;
 
 typedef struct {
-    PS_SignalHandler **items;
+    int initialized;
     int len;
+    PS_SignalHandler *items[];
 } PS_SignalHandlers;
 
-static PS_SignalHandlers handlers;
-TCL_DECLARE_MUTEX(handlersLock);
+static Tcl_ThreadDataKey handlersKey;
+static int handlersLen;
 
-#ifdef TCL_THREADS
-MODULE_SCOPE
-void
-_LockEventHandlers (void)
+static
+PS_SignalHandlers*
+GetHandlers (void)
 {
-    Tcl_MutexLock(&handlersLock);
+    /* FIXME this is a hack: by contract we should not
+     * assume Tcl_ThreadDataKey is actually a pointer
+     * which is filled during the first call to
+     * Tcl_GetThreadData() */
+    if (handlersKey == NULL) {
+	int len = SIGOFFSET(max_signum);
+	handlersLen = sizeof(PS_SignalHandlers)
+		+ sizeof(PS_SignalHandler) * len;
+    }
+    return Tcl_GetThreadData(&handlersKey, handlersLen);
 }
-#endif
-
-#ifdef TCL_THREADS
-MODULE_SCOPE
-void
-_UnlockEventHandlers (void)
-{
-    Tcl_MutexUnlock(&handlersLock);
-}
-#endif
 
 static
 PS_SignalHandler*
@@ -45,7 +43,6 @@ CreateSignalHandler (void)
 
     handlerPtr = (PS_SignalHandler*) ckalloc(sizeof(PS_SignalHandler));
 
-    handlerPtr->threadId = Tcl_GetCurrentThread();
     handlerPtr->interp = NULL;
 
     cmdObj = Tcl_NewObj();
@@ -53,6 +50,17 @@ CreateSignalHandler (void)
     handlerPtr->cmdObj = cmdObj;
 
     return handlerPtr;
+}
+
+static
+void
+FreeSignalHandler (
+    PS_SignalHandler *handlerPtr
+    )
+{
+    Tcl_DecrRefCount(handlerPtr->cmdObj);
+
+    ckfree((char*) handlerPtr);
 }
 
 
@@ -64,30 +72,28 @@ SignalEventHandler (
     )
 {
     SignalEvent *sigEvPtr;
+    PS_SignalHandlers *handlersPtr;
     PS_SignalHandler *handlerPtr;
     Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
-    int valid, code;
+    int code;
 
     sigEvPtr = (SignalEvent*) evPtr;
     printf("Rcvd %d in %x\n",
 	    sigEvPtr->signum, sigEvPtr->threadId);
 
-    LockEventHandlers();
-    handlerPtr = handlers.items[SIGOFFSET(sigEvPtr->signum)];
-    valid = handlerPtr->threadId == sigEvPtr->threadId;
-    if (valid) {
-	interp = handlerPtr->interp;
-	cmdObj = handlerPtr->cmdObj;
-    }
-    UnlockEventHandlers();
+    handlersPtr = GetHandlers();
+    handlerPtr = handlersPtr->items[SIGOFFSET(sigEvPtr->signum)];
 
-    if (valid) {
-	code = Tcl_GlobalEvalObj(interp, cmdObj);
-	if (code == TCL_ERROR) {
-	    Tcl_BackgroundError(interp);
-	}
+    interp = handlerPtr->interp;
+    cmdObj = handlerPtr->cmdObj;
+
+    Tcl_IncrRefCount(cmdObj);
+    code = Tcl_GlobalEvalObj(interp, cmdObj);
+    if (code == TCL_ERROR) {
+	Tcl_BackgroundError(interp);
     }
+    Tcl_DecrRefCount(cmdObj);
 
     return 1;
 }
@@ -103,27 +109,58 @@ DeleteEvent (
     return evPtr->proc == SignalEventHandler;
 }
 
+static
+void
+FreeEventHandlers (
+    ClientData clientData
+    )
+{
+    int i, len;
+    PS_SignalHandlers *handlersPtr;
+    PS_SignalHandler *handlerPtr;
+
+    handlersPtr = (PS_SignalHandlers*) clientData;
+
+    len = handlersPtr->len;
+    for (i = 0; i < len; ++i) {
+	handlerPtr = handlersPtr->items[i];
+	if (handlerPtr != NULL) {
+	    FreeSignalHandler(handlerPtr);
+	}
+    }
+}
+
 
 MODULE_SCOPE
 void
 InitEventHandlers (void)
 {
-    int i, len, nbytes;
+    int i, len;
+    PS_SignalHandlers *handlersPtr;
 
+    handlersPtr = GetHandlers();
+    if (handlersPtr->initialized) return;
+
+    /* TODO make sane --
+     * currently we calculate this length twice:
+     * once in GetHandlers() and once here */
     len = SIGOFFSET(max_signum);
-    nbytes = sizeof(handlers.items[0]) * len;
-    handlers.items = (PS_SignalHandler**) ckalloc(nbytes);
-    handlers.len = len;
+
+    handlersPtr->initialized = 1;
+    handlersPtr->len = len;
 
     for (i = 0; i < len; ++i) {
-	handlers.items[i] = NULL;
+	handlersPtr->items[i] = NULL;
     }
 
     /* Create handlers for known signals */
     for (i = 0; i < nsigs; ++i) {
 	int index = SIGOFFSET(signals[i].signal);
-	handlers.items[index] = CreateSignalHandler();
-    }	
+	handlersPtr->items[index] = CreateSignalHandler();
+    }
+
+    Tcl_CreateThreadExitHandler(FreeEventHandlers,
+	    (ClientData) handlersPtr);
 }
 
 
@@ -138,6 +175,9 @@ Original_SetEventHandler (
     int len;
     Tcl_Obj *cmdObj;
     const char *newCmdPtr;
+    PS_SignalHandlers *handlersPtr;
+
+    handlersPtr = GetHandlers();
 
     cmdObj = handlerPtr->cmdObj;
 
@@ -189,19 +229,13 @@ SetEventHandler (
     Tcl_Obj *newCmdObj
     )
 {
+    PS_SignalHandlers *handlersPtr;
     PS_SignalHandler *handlerPtr;
-    Tcl_ThreadId threadId;
 
-    handlerPtr = handlers.items[SIGOFFSET(signum)];
+    handlersPtr = GetHandlers();
+    handlerPtr = handlersPtr->items[SIGOFFSET(signum)];
 
     Tcl_DecrRefCount(handlerPtr->cmdObj);
-
-    threadId = Tcl_GetCurrentThread();
-    if (handlerPtr->threadId != threadId) {
-	newCmdObj = Tcl_DuplicateObj(newCmdObj);
-	handlerPtr->threadId = threadId;
-	
-    }
 
     Tcl_IncrRefCount(newCmdObj);
     handlerPtr->cmdObj = newCmdObj;
@@ -214,19 +248,16 @@ GetEventHandlerCommand (
     int signum
     )
 {
+    PS_SignalHandlers *handlersPtr;
     PS_SignalHandler *handlerPtr;
 
-    handlerPtr = handlers.items[SIGOFFSET(signum)];
+    handlersPtr = GetHandlers();
+    handlerPtr = handlersPtr->items[SIGOFFSET(signum)];
 
     if (handlerPtr == NULL) {
 	return NULL;
     } else {
-	Tcl_ThreadId threadId = Tcl_GetCurrentThread();
-	if (handlerPtr->threadId == threadId) {
-	    return handlerPtr->cmdObj;
-	} else {
-	    return Tcl_DuplicateObj(handlerPtr->cmdObj);
-	}
+	return handlerPtr->cmdObj;
     }
 }
 

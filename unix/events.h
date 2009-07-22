@@ -11,22 +11,6 @@ typedef struct {
     int signum;
 } SignalEvent;
 
-#ifdef TCL_THREADS
-void
-_LockEventHandlers (void);
-#define LockEventHandlers _LockEventHandlers
-#else
-#define LockEventHandlers do {} while (0)
-#endif
-
-#ifdef TCL_THREADS
-void
-_UnlockEventHandlers (void);
-#define UnlockEventHandlers _UnlockEventHandlers
-#else
-#define UnlockEventHandlers do {} while (0)
-#endif
-
 void
 InitEventHandlers (void);
 

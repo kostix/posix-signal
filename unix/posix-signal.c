@@ -51,9 +51,14 @@ Posixsignal_Init(Tcl_Interp * interp)
 	return TCL_ERROR;
     }
 
+    /* TODO protect by a package-global mutex,
+     * must be initialized once per process */
     InitSignalTables();
-    InitEventHandlers();
     InitSyncPoints();
+
+    /* This initializer must be run each time the package
+     * is loaded */
+    InitEventHandlers();
 
     Tcl_CreateObjCommand(interp, PACKAGE_NAME,
 	    Signal_Command, clientData, NULL);
