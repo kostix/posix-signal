@@ -122,6 +122,7 @@ ManagerThreadProc (
 		nextEvPtr = evPtr->event.nextPtr;
 		Tcl_ThreadQueueEvent(evPtr->threadId,
 			(Tcl_Event*) evPtr, TCL_QUEUE_TAIL);
+		Tcl_ThreadAlert(evPtr->threadId);
 		printf("Sent %d to %x\n",
 			evPtr->signum, evPtr->threadId);
 		evPtr = nextEvPtr;
