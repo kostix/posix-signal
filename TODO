@@ -2,6 +2,17 @@
   Thread package is loaded while current dir
   appears to be unchanged.
 
+* Think about this scenario:
+  * Syncpoints manager thread is busy while holding
+    no lock (e.g. with sending events).
+  * Some thread signals certain syncpoint one or
+    several times.
+  * Then another thread decides to replace the signal
+    handler associated with that syncpoint.
+	This will change the owner thread's ID in the
+	syncpoint object, but the number of signaled
+	events logically pertains to another thread.
+
 * Handling of command objects bound to event handlers
   should be closely considered: it seems that Tcl_Objs
   cannot be blindly shared between threads; for instance:
