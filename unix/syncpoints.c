@@ -115,18 +115,28 @@ ManagerThreadProc (
 	Tcl_MutexUnlock(&spointsLock);
 
 	{
-	    SignalEvent *evPtr = headEvPtr;
+	    SignalEvent *evPtr;
+	    Tcl_ThreadId lastId;
+
+	    evPtr = headEvPtr;
+	    lastId = evPtr->threadId;
 	    do {
 		SignalEvent *nextEvPtr;
+		Tcl_ThreadId threadId;
 
 		nextEvPtr = evPtr->event.nextPtr;
-		Tcl_ThreadQueueEvent(evPtr->threadId,
+		threadId = evPtr->threadId;
+		Tcl_ThreadQueueEvent(threadId,
 			(Tcl_Event*) evPtr, TCL_QUEUE_TAIL);
-		Tcl_ThreadAlert(evPtr->threadId);
+		if (threadId != lastId) {
+		    Tcl_ThreadAlert(lastId);
+		}
 		printf("Sent %d to %x\n",
 			evPtr->signum, evPtr->threadId);
 		evPtr = nextEvPtr;
+		lastId = threadId;
 	    } while (evPtr != NULL);
+	    Tcl_ThreadAlert(lastId);
 	}
     }
 }
