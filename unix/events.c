@@ -16,22 +16,29 @@ typedef struct {
 } PS_SignalHandlers;
 
 static Tcl_ThreadDataKey handlersKey;
-static int handlersLen;
+
+static
+PS_SignalHandlers*
+AllocHandlers (void)
+{
+    int len, nbytes;
+    PS_SignalHandlers *handlersPtr;
+
+    len = max_signum;
+    nbytes = sizeof(*handlersPtr)
+	    + sizeof(handlersPtr->items[0]) * len;
+
+    handlersPtr = Tcl_GetThreadData(&handlersKey, nbytes);
+    handlersPtr->len = len;
+
+    return handlersPtr;
+}
 
 static
 PS_SignalHandlers*
 GetHandlers (void)
 {
-    /* FIXME this is a hack: by contract we should not
-     * assume Tcl_ThreadDataKey is actually a pointer
-     * which is filled during the first call to
-     * Tcl_GetThreadData() */
-    if (handlersKey == NULL) {
-	int len = SIGOFFSET(max_signum);
-	handlersLen = sizeof(PS_SignalHandlers)
-		+ sizeof(PS_SignalHandler) * len;
-    }
-    return Tcl_GetThreadData(&handlersKey, handlersLen);
+    return Tcl_GetThreadData(&handlersKey, 0);
 }
 
 static
@@ -135,21 +142,13 @@ MODULE_SCOPE
 void
 InitEventHandlers (void)
 {
-    int i, len;
+    int i;
     PS_SignalHandlers *handlersPtr;
 
-    handlersPtr = GetHandlers();
+    handlersPtr = AllocHandlers();
     if (handlersPtr->initialized) return;
 
-    /* TODO make sane --
-     * currently we calculate this length twice:
-     * once in GetHandlers() and once here */
-    len = SIGOFFSET(max_signum);
-
-    handlersPtr->initialized = 1;
-    handlersPtr->len = len;
-
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < handlersPtr->len; ++i) {
 	handlersPtr->items[i] = NULL;
     }
 
@@ -158,6 +157,8 @@ InitEventHandlers (void)
 	int index = SIGOFFSET(signals[i].signal);
 	handlersPtr->items[index] = CreateSignalHandler();
     }
+
+    handlersPtr->initialized = 1;
 
     Tcl_CreateThreadExitHandler(FreeEventHandlers,
 	    (ClientData) handlersPtr);
