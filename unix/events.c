@@ -236,6 +236,8 @@ SetEventHandler (
     handlersPtr = GetHandlers();
     handlerPtr = handlersPtr->items[SIGOFFSET(signum)];
 
+    handlerPtr->interp = interp;
+
     Tcl_DecrRefCount(handlerPtr->cmdObj);
 
     Tcl_IncrRefCount(newCmdObj);
