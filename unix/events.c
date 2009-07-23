@@ -73,7 +73,7 @@ FreeSignalHandler (
 
 static
 int
-SignalEventHandler (
+HandleSignalEvent (
     Tcl_Event *evPtr,
     int flags
     )
@@ -113,7 +113,7 @@ DeleteEvent (
     ClientData clientData
     )
 {
-    return evPtr->proc == SignalEventHandler;
+    return evPtr->proc == HandleSignalEvent;
 }
 
 static
@@ -276,7 +276,7 @@ CreateSignalEvent (
 
     evPtr = (SignalEvent*) ckalloc(sizeof(*evPtr));
 
-    evPtr->event.proc = SignalEventHandler;
+    evPtr->event.proc = HandleSignalEvent;
     evPtr->threadId = threadId;
     evPtr->signum = signum;
 
