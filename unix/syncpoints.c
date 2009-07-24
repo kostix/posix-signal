@@ -4,13 +4,15 @@
 #include "events.h"
 #include <stdio.h>
 
-typedef struct {
+struct SyncPoint {
 #ifdef TCL_THREADS
     Tcl_ThreadId threadId;
 #endif
     int signaled;
     struct SyncPoint *nextPtr;
-} SyncPoint;
+};
+
+typedef struct SyncPoint SyncPoint;
 
 static SyncPoint **syncpoints;
 TCL_DECLARE_MUTEX(spointsLock);
