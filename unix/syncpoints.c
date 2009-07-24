@@ -14,6 +14,11 @@ struct SyncPoint {
 
 typedef struct SyncPoint SyncPoint;
 
+typedef struct {
+    SignalEvent *headPtr;
+    SignalEvent *tailPtr;
+} SignalEventList;
+
 static SyncPoint **syncpoints;
 TCL_DECLARE_MUTEX(spointsLock);
 
@@ -62,58 +67,62 @@ WakeManagerThread (void)
 #endif
 }
 
-#if 0
-#ifdef TCL_THREADS
 static
-SignalEvent*
-HarvestSyncpoint (
-    SyncPoint *spointPtr
+void
+EmptyEventList (
+    SignalEventList *listPtr
     )
 {
-    SignalEvent *headEvPtr, *tailEvPtr;
+    listPtr->headPtr = NULL;
+    listPtr->tailPtr = NULL;
+}
+
+static
+void
+AddEventToList (
+    SignalEventList *listPtr,
+    SignalEvent *evPtr
+    )
+{
+    if (listPtr->tailPtr == NULL) {
+	listPtr->headPtr = evPtr;
+    } else {
+	listPtr->tailPtr->event.nextPtr = (Tcl_Event*) evPtr;
+    }
+    listPtr->tailPtr = evPtr;
+    listPtr->tailPtr->event.nextPtr = NULL;
+}
+
+#if 1
+#ifdef TCL_THREADS
+static
+void
+HarvestSyncpoint (
+    int signum,
+    SyncPoint *spointPtr,
+    SignalEventList *evListPtr
+    )
+{
     SyncPoint *nextPtr;
     int signaled;
 
-    headEvPtr = tailEvPtr = NULL;
-
+    signaled = spointPtr->signaled;
     if (signaled) {
 	do {
-	    SignalEvent *evPtr;
+	    AddEventToList(evListPtr,
+		    CreateSignalEvent(spointPtr->threadId, signum));
 
-	    /* TODO elaborate on i + 1 */
-	    evPtr = CreateSignalEvent(spointPtr->threadId,
-		    i + 1);
-
-	    if (tailEvPtr == NULL) {
-		headEvPtr = evPtr;
-	    } else {
-		tailEvPtr->event.nextPtr = evPtr;
-	    }
-	    tailEvPtr = evPtr;
-	    tailEvPtr->event.nextPtr = NULL;
 	    --signaled;
 	} while (signaled > 0);
 	spointPtr->signaled = 0;
     }
 
     nextPtr = spointPtr->nextPtr;
-    if (nextPtr != NULL) {
-	SignalEvent *contEvPtr;
-
-	contEvPtr = HarvestSyncpoint(nextPtr);
-	if (contEvPtr != NULL) {
-	    /* FIXME at this point tailEvPtr can easily
-	     * be NULL; we should check for this,
-	     * and in general it seems worthy to factor
-	     * out this messing with queue pointers */
-	    tailEvPtr->event.nextPtr = contEvPtr;
-	    tailEvPtr = contEvPtr;
-	}
-
+    while (nextPtr != NULL) {
+	HarvestSyncpoint(signum, nextPtr, evListPtr);
 	FreeSyncPoint(nextPtr);
+	nextPtr = spointPtr->nextPtr;
     }
-
-    return headEvPtr;
 }
 #endif /* TCL_THREADS */
 #endif
