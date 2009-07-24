@@ -136,7 +136,7 @@ ManagerThreadProc (
 
     while (1) {
 	int i;
-	SignalEvent *headEvPtr, *tailEvPtr;
+	SignalEventList eventList;
 
 	Tcl_MutexLock(&spointsLock);
 
@@ -145,38 +145,13 @@ ManagerThreadProc (
 	}
 	condReady = 0;
 
-	headEvPtr = tailEvPtr = NULL;
+	EmptyEventList(&eventList);
 
 	/* TODO keep the length of the syncpoints table
 	 * in a variable and use it here */
 	for (i = 0; i < SIGOFFSET(max_signum); ++i) {
-	    SyncPoint *spointPtr;
-	    int signaled;
-
-	    spointPtr = syncpoints[i];
-	    if (spointPtr == NULL) continue;
-	    
-	    signaled = spointPtr->signaled;
-	    if (signaled > 0) {
-		do {
-		    SignalEvent *evPtr;
-
-		    /* TODO elaborate on i + 1 */
-		    evPtr = CreateSignalEvent(spointPtr->threadId,
-			    i + 1);
-
-		    if (tailEvPtr == NULL) {
-			headEvPtr = evPtr;
-		    } else {
-			tailEvPtr->event.nextPtr = evPtr;
-		    }
-		    tailEvPtr = evPtr;
-		    tailEvPtr->event.nextPtr = NULL;
-
-		    --signaled;
-		} while (signaled > 0);
-		spointPtr->signaled = 0;
-	    }
+	    /* TODO elaborate on i + 1 */
+	    HarvestSyncpoint(i + 1, syncpoints[i], &eventList);
 	}
 
 	Tcl_MutexUnlock(&spointsLock);
@@ -185,7 +160,7 @@ ManagerThreadProc (
 	    SignalEvent *evPtr;
 	    Tcl_ThreadId lastId;
 
-	    evPtr = headEvPtr;
+	    evPtr = eventList.headPtr;
 	    lastId = evPtr->threadId;
 	    do {
 		SignalEvent *nextEvPtr;
