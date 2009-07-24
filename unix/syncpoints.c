@@ -93,7 +93,6 @@ AddEventToList (
     listPtr->tailPtr->event.nextPtr = NULL;
 }
 
-#if 1
 #ifdef TCL_THREADS
 static
 void
@@ -104,28 +103,27 @@ HarvestSyncpoint (
     )
 {
     SyncPoint *nextPtr;
-    int signaled;
+    int level;
 
-    signaled = spointPtr->signaled;
-    if (signaled) {
-	do {
-	    AddEventToList(evListPtr,
-		    CreateSignalEvent(spointPtr->threadId, signum));
+    for (level = 0; spointPtr != NULL; spointPtr = nextPtr, ++level) {
+	int signaled = spointPtr->signaled;
+	if (signaled) {
+	    do {
+		AddEventToList(evListPtr,
+			CreateSignalEvent(spointPtr->threadId, signum));
 
-	    --signaled;
-	} while (signaled > 0);
-	spointPtr->signaled = 0;
-    }
+		--signaled;
+	    } while (signaled > 0);
+	    spointPtr->signaled = 0;
+	}
 
-    nextPtr = spointPtr->nextPtr;
-    while (nextPtr != NULL) {
-	HarvestSyncpoint(signum, nextPtr, evListPtr);
-	FreeSyncPoint(nextPtr);
 	nextPtr = spointPtr->nextPtr;
+	if (level > 0) {
+	    FreeSyncPoint(spointPtr);
+	}
     }
 }
 #endif /* TCL_THREADS */
-#endif
 
 #ifdef TCL_THREADS
 static
