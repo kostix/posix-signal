@@ -9,6 +9,7 @@ typedef struct {
     Tcl_ThreadId threadId;
 #endif
     int signaled;
+    struct SyncPoint *nextPtr;
 } SyncPoint;
 
 static SyncPoint **syncpoints;
@@ -33,6 +34,7 @@ CreateSyncPoint (void)
     spointPtr->threadId = Tcl_GetCurrentThread();
 #endif
     spointPtr->signaled = 0;
+    spointPtr->nextPtr  = NULL;
 
     return spointPtr;
 }
@@ -57,6 +59,62 @@ WakeManagerThread (void)
     Tcl_AsyncMark(activator);
 #endif
 }
+
+#if 0
+#ifdef TCL_THREADS
+static
+SignalEvent*
+HarvestSyncpoint (
+    SyncPoint *spointPtr
+    )
+{
+    SignalEvent *headEvPtr, *tailEvPtr;
+    SyncPoint *nextPtr;
+    int signaled;
+
+    headEvPtr = tailEvPtr = NULL;
+
+    if (signaled) {
+	do {
+	    SignalEvent *evPtr;
+
+	    /* TODO elaborate on i + 1 */
+	    evPtr = CreateSignalEvent(spointPtr->threadId,
+		    i + 1);
+
+	    if (tailEvPtr == NULL) {
+		headEvPtr = evPtr;
+	    } else {
+		tailEvPtr->event.nextPtr = evPtr;
+	    }
+	    tailEvPtr = evPtr;
+	    tailEvPtr->event.nextPtr = NULL;
+	    --signaled;
+	} while (signaled > 0);
+	spointPtr->signaled = 0;
+    }
+
+    nextPtr = spointPtr->nextPtr;
+    if (nextPtr != NULL) {
+	SignalEvent *contEvPtr;
+
+	contEvPtr = HarvestSyncpoint(nextPtr);
+	if (contEvPtr != NULL) {
+	    /* FIXME at this point tailEvPtr can easily
+	     * be NULL; we should check for this,
+	     * and in general it seems worthy to factor
+	     * out this messing with queue pointers */
+	    tailEvPtr->event.nextPtr = contEvPtr;
+	    tailEvPtr = contEvPtr;
+	}
+
+	FreeSyncPoint(nextPtr);
+    }
+
+    return headEvPtr;
+}
+#endif /* TCL_THREADS */
+#endif
 
 #ifdef TCL_THREADS
 static
@@ -204,8 +262,15 @@ SetSyncPoint (
     if (spointPtr == NULL) {
 	syncpoints[index] = CreateSyncPoint();
     } else {
-	spointPtr->threadId = Tcl_GetCurrentThread();
-	spointPtr->signaled = 0;
+	int signaled = spointPtr->signaled;
+	if (signaled) {
+	    SyncPoint *oldPtr = spointPtr;
+	    spointPtr = CreateSyncPoint();
+	    spointPtr->nextPtr = oldPtr;
+	} else {
+	    spointPtr->threadId = Tcl_GetCurrentThread();
+	    spointPtr->signaled = 0;
+	}
     }
 }
 
