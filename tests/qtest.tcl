@@ -9,5 +9,7 @@ posix::signal trap SIGHUP {puts SIGHUP}
 
 #keepalive 3000
 
+puts [pid]
+
 vwait forever
 
