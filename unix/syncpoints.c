@@ -135,7 +135,7 @@ ManagerThreadProc (
     /* TODO block all signals */
 
     while (1) {
-	int i;
+	int signum;
 	SignalEventList eventList;
 
 	Tcl_MutexLock(&spointsLock);
@@ -149,9 +149,9 @@ ManagerThreadProc (
 
 	/* TODO keep the length of the syncpoints table
 	 * in a variable and use it here */
-	for (i = 0; i < SIGOFFSET(max_signum); ++i) {
-	    /* TODO elaborate on i + 1 */
-	    HarvestSyncpoint(i + 1, syncpoints[i], &eventList);
+	for (signum = 1; signum <= max_signum; ++signum) {
+	    int index = SIGOFFSET(signum);
+	    HarvestSyncpoint(signum, syncpoints[index], &eventList);
 	}
 
 	Tcl_MutexUnlock(&spointsLock);
