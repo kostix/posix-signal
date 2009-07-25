@@ -204,7 +204,7 @@ InitSyncPoints (void)
 {
     int i, len;
 
-    len = SIGOFFSET(max_signum);
+    len = max_signum;
     syncpoints = (SyncPoint**) ckalloc(sizeof(SyncPoint*) * len);
 
     for (i = 0; i < len; ++i) {
