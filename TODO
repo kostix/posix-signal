@@ -1,6 +1,21 @@
+* Implement comprehensive parsing of signal names:
+  1) Both long and short names should be supported,
+     i.e. SIGHUP and HUP should both work.
+  2) Integers should be supported, like 1 or 21.
+  3) Both forms should accept a leading minus sign,
+     like -SIGTERM or -9 (see kill(2)).
+
 * Looks like our package fails to load after the
   Thread package is loaded while current dir
   appears to be unchanged.
+
+  Indeed, it seems like a subtle problem with Tcl's [load]
+  command, as its idea about the current directory
+  might be different from that of the system, because after,
+  say, the Thread package is loaded,
+  [file exists libposixsignal0.1.so] returns 1
+  but [load] on a non-qualified name fails, *and* it works
+  for the full file name.
 
 * Do we really need signal vector for initialization?
   Currently only creation of the table of event handlers
