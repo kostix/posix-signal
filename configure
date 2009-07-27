@@ -6570,7 +6570,7 @@ done
 
 
     vars="unix/posix-signal.c unix/sigtables.c unix/trap.c
-    unix/syncpoints.c unix/events.c"
+    unix/syncpoints.c unix/events.c unix/send.c unix/utils.c"
     for i in $vars; do
 	case $i in
 	    \$*)

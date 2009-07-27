@@ -6,6 +6,7 @@
 #include "syncpoints.h"
 #include "events.h"
 #include "trap.h"
+#include "send.h"
 
 static
 int
@@ -16,9 +17,10 @@ Signal_Command (
     Tcl_Obj *const objv[]
 	)
 {
-    const char *cmds[] = { "trap", NULL };
+    const char *cmds[] = { "trap", "send", NULL };
     Tcl_ObjCmdProc *const procs[] = {
-	Command_Trap
+	Command_Trap,
+	Command_Send
     };
 
     int cmd;
