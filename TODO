@@ -1,9 +1,22 @@
+* Implement changing signal disposition to
+  SIG_DFL and SIG_IGN.
+
+* Think about a robust way to keep signal dispositions
+  and the table of syncpoints in sync.
+
 * Implement comprehensive parsing of signal names:
   1) Both long and short names should be supported,
      i.e. SIGHUP and HUP should both work.
   2) Integers should be supported, like 1 or 21.
   3) Both forms should accept a leading minus sign,
      like -SIGTERM or -9 (see kill(2)).
+
+* Think about saving the "subverted" signal handler
+  (returned by sigaction() with non-empty last arg)
+  and providing for a) calling of this handler;
+  b) restoring it.
+  This could be useful for interoperating with
+  other signal-handling extensions or even with the core.
 
 * Looks like our package fails to load after the
   Thread package is loaded while current dir
