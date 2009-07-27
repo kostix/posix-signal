@@ -3,16 +3,9 @@
 #include "sigtables.h"
 #include "syncpoints.h"
 #include "events.h"
+#include "utils.h"
 #include "trap.h"
 
-static void
-ReportPosixError (
-    Tcl_Interp *interp
-    )
-{
-    const char *errStrPtr = Tcl_PosixError(interp);
-    Tcl_SetObjResult(interp, Tcl_NewStringObj(errStrPtr, -1));
-}
 
 /* POSIX.1-2001 signal handler */
 static
