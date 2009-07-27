@@ -38,7 +38,7 @@ InstallSignalHandler (
 
     sa.sa_flags     = SA_RESTART | SA_SIGINFO;
     sa.sa_sigaction = &SignalAction;
-    sigemptyset(&sa.sa_mask);
+    sigfillset(&sa.sa_mask);
 
     return sigaction(signum, &sa, NULL);
 }
