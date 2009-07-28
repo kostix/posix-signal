@@ -11,12 +11,37 @@
   3) Both forms should accept a leading minus sign,
      like -SIGTERM or -9 (see kill(2)).
 
+  This possibly implies the need to create our custom
+  Tcl_Obj type which would cache the signal number
+  along with its string rep.
+
+  Such an object could be almost identical to the
+  Tcl_IntObj, but with different procs for updating
+  the string and integer representations.
+
+* Provide for listing of POSIX real-time signals
+  in the signals[] table.
+
+  The problem is that a) the number of such signals
+  is not fixed; b) their min and max numbers are
+  not fixed.
+  This imples we possibly have to make up a dynamic
+  table of signals, or may be move directly to
+  storing the "signal objects" instead of just pairs
+  of signal name and number.
+
 * Think about saving the "subverted" signal handler
   (returned by sigaction() with non-empty last arg)
   and providing for a) calling of this handler;
   b) restoring it.
   This could be useful for interoperating with
   other signal-handling extensions or even with the core.
+
+* GDB lists a whole lot of signals (via its "info signals"
+  command) which signal(7) doesn't mention
+  (on Debian Lenny).
+  It worth studying whether inclusion of these signals
+  is desired or not.
 
 * Looks like our package fails to load after the
   Thread package is loaded while current dir
