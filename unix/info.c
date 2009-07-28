@@ -14,7 +14,7 @@ TopicCmd_Sigrtmin (
     )
 {
     if (objc != 3) {
-	Tcl_WrongNumArgs(interp, 2, objv, "sigrtmin");
+	Tcl_WrongNumArgs(interp, 3, objv, NULL);
 	return TCL_ERROR;
     }
 
@@ -33,7 +33,7 @@ TopicCmd_Sigrtmax (
     )
 {
     if (objc != 3) {
-	Tcl_WrongNumArgs(interp, 2, objv, "sigrtmax");
+	Tcl_WrongNumArgs(interp, 3, objv, NULL);
 	return TCL_ERROR;
     }
 
@@ -55,7 +55,7 @@ TopicCmd_Signals (
     int i;
 
     if (objc != 3) {
-	Tcl_WrongNumArgs(interp, 2, objv, "info");
+	Tcl_WrongNumArgs(interp, 3, objv, NULL);
 	return TCL_ERROR;
     }
 
