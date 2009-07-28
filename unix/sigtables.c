@@ -7,6 +7,7 @@
 
 const Signal
 signals[] = {
+    /* POSIX.1-1990 signals */
     SIGDECL(SIGHUP),
     SIGDECL(SIGINT),
     SIGDECL(SIGQUIT),
@@ -26,6 +27,47 @@ signals[] = {
     SIGDECL(SIGTSTP),
     SIGDECL(SIGTTIN),
     SIGDECL(SIGTTOU),
+    /* SUSv2 and POSIX.1-2001 signals */
+    SIGDECL(SIGBUS),
+    SIGDECL(SIGPOLL),
+    SIGDECL(SIGPROF),
+    SIGDECL(SIGSYS),
+    SIGDECL(SIGTRAP),
+    SIGDECL(SIGURG),
+    SIGDECL(SIGVTALRM),
+    SIGDECL(SIGXCPU),
+    SIGDECL(SIGXFSZ),
+    /* Non-standard signals */
+#ifdef SIGIOT
+    SIGDECL(SIGIOT),
+#endif
+#ifdef SIGEMT
+    SIGDECL(SIGEMT),
+#endif
+#ifdef SIGSTKFLT
+    SIGDECL(SIGSTKFLT),
+#endif
+#ifdef SIGIO
+    SIGDECL(SIGIO),
+#endif
+#ifdef SIGCLD
+    SIGDECL(SIGCLD),
+#endif
+#ifdef SIGPWR
+    SIGDECL(SIGPWR),
+#endif
+#ifdef SIGINFO
+    SIGDECL(SIGINFO),
+#endif
+#ifdef SIGLOST
+    SIGDECL(SIGLOST),
+#endif
+#ifdef SIGWINCH
+    SIGDECL(SIGWINCH),
+#endif
+#ifdef SIGUNUSED
+    SIGDECL(SIGUNUSED),
+#endif
 };
 
 const int nsigs = sizeof(signals)/sizeof(signals[0]);
