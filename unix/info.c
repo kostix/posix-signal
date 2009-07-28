@@ -1,5 +1,6 @@
 #include <tcl.h>
 #include <signal.h>
+#include "sigtables.h"
 #include "info.h"
 
 
@@ -41,6 +42,39 @@ TopicCmd_Sigrtmax (
 }
 
 
+static
+int
+TopicCmd_Signals (
+    ClientData clientData,
+    Tcl_Interp *interp,
+    int objc,
+    Tcl_Obj *const objv[]
+    )
+{
+    Tcl_Obj *listObj;
+    int i;
+
+    if (objc != 3) {
+	Tcl_WrongNumArgs(interp, 2, objv, "info");
+	return TCL_ERROR;
+    }
+
+    listObj = Tcl_NewListObj(0, NULL);
+    for (i = 0; i < nsigs; ++i) {
+	/* TODO instead of a string object, there should
+	 * possibly be an object of our custom type
+	 * which caches the signal number */
+	Tcl_ListObjAppendElement(interp, listObj,
+		Tcl_NewStringObj(signals[i].name, -1));
+	Tcl_ListObjAppendElement(interp, listObj,
+		Tcl_NewIntObj(signals[i].signal));
+    }
+
+    Tcl_SetObjResult(interp, listObj);
+    return TCL_OK;
+}
+
+
 MODULE_SCOPE
 int
 Command_Info (
@@ -50,10 +84,11 @@ Command_Info (
     Tcl_Obj *const objv[]
     )
 {
-    const char *topics[] = { "sigrtmin", "sigrtmax", NULL };
+    const char *topics[] = { "sigrtmin", "sigrtmax", "signals", NULL };
     Tcl_ObjCmdProc *const procs[] = {
 	TopicCmd_Sigrtmin,
-	TopicCmd_Sigrtmax
+	TopicCmd_Sigrtmax,
+	TopicCmd_Signals
     };
 
     int topic;
