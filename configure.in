@@ -65,7 +65,7 @@ TEA_SETUP_COMPILER
 
 TEA_ADD_SOURCES([unix/posix-signal.c unix/sigtables.c unix/trap.c
     unix/syncpoints.c unix/events.c unix/send.c unix/utils.c
-    unix/info.c])
+    unix/info.c unix/sigobj.c])
 TEA_ADD_HEADERS([])
 TEA_ADD_INCLUDES([])
 TEA_ADD_LIBS([])
