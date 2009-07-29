@@ -1,7 +1,7 @@
 #include <tcl.h>
 #include <sys/types.h>
 #include <signal.h>
-#include "sigtables.h"
+#include "sigobj.h"
 #include "utils.h"
 #include "send.h"
 
@@ -22,7 +22,7 @@ Command_Send (
 	return TCL_ERROR;
     }
 
-    signum = GetSignalIdFromObj(interp, objv[2]);
+    signum = GetSignumFromObj(interp, objv[2]);
     if (signum == -1) {
 	return TCL_ERROR;
     }
