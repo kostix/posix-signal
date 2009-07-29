@@ -10,10 +10,10 @@ typedef struct {
     int items[];
 } SignalVector;
 
-extern const Signal signals[];
-extern const int nsigs;
+MODULE_SCOPE const Signal signals[];
+MODULE_SCOPE const int nsigs;
 
-extern int max_signum;
+MODULE_SCOPE int max_signum;
 
 #define SIGOFFSET(SIG) ((SIG) - 1)
 
