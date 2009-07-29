@@ -1,9 +1,12 @@
 #include <tcl.h>
 #include <signal.h>
 #include <assert.h>
+#include "sigobj.h"
 #include "sigtables.h"
 
 #define SIGDECL(SIG) { SIG, #SIG }
+
+#define WORDKEY(KEY) ((char*) KEY)
 
 const Signal
 signals[] = {
@@ -78,6 +81,11 @@ int max_signum;
 
 static const char **signames;
 
+static struct {
+    Tcl_HashTable signums;
+    Tcl_HashTable names;
+} tables;
+
 static
 void
 InitLookupTable (void)
@@ -92,6 +100,41 @@ InitLookupTable (void)
 	signames[i] = signals[i].name;
     }
     signames[nsigs] = NULL;
+}
+
+static
+void
+InitHashTables (void)
+{
+    int i;
+
+    Tcl_InitHashTable(&tables.signums, TCL_ONE_WORD_KEYS);
+    Tcl_InitHashTable(&tables.names,   TCL_STRING_KEYS);
+
+    for (i = 0; i < nsigs; ++i) {
+	int signum, isnew;
+	const char *name;
+	Tcl_Obj *sigObj;
+	Tcl_HashEntry *entryPtr;
+
+	signum  = signals[i].signal;
+	name    = signals[i].name;
+
+	sigObj = CreatePosixSignalObj(signum, name);
+
+	entryPtr = Tcl_CreateHashEntry(&tables.signums,
+		WORDKEY(signum), &isnew);
+	assert(entryPtr != NULL);
+	if (isnew) {
+	    Tcl_SetHashValue(entryPtr, sigObj);
+	    Tcl_IncrRefCount(sigObj);
+	}
+
+	entryPtr = Tcl_CreateHashEntry(&tables.names, name, &isnew);
+	assert(entryPtr != NULL && isnew);
+	Tcl_SetHashValue(entryPtr, sigObj);
+	Tcl_IncrRefCount(sigObj);
+    }
 }
 
 MODULE_SCOPE
@@ -150,6 +193,7 @@ InitSignalTables (void)
     max_signum = max;
 
     InitLookupTable();
+    InitHashTables();
 }
 
 MODULE_SCOPE
