@@ -25,11 +25,6 @@ static Tcl_ObjType posixSignalObjType = {
     SetFromAny           /* setFromAnyProc */
 };
 
-/* TODO move these procs to sigtables.c
- * and provide sensible implementations */
-static const char* GetNameBySignum (Tcl_Interp *interp, int signum);
-static int GetSignumByName (Tcl_Interp *interp, const char *name);
-
 /* TODO duplication of a string into a Tcl_Obj's string rep
  * is used three times in this module -- looks like
  * a candidate for a separate proc or a macro */
@@ -160,26 +155,6 @@ SetFromAny (
     } else {
 	return TCL_ERROR;
     }
-}
-
-static
-const char *
-GetNameBySignum (
-    Tcl_Interp *interp,
-    int signum
-    )
-{
-    return "SIGFAKE";
-}
-
-static
-int
-GetSignumByName (
-    Tcl_Interp *interp,
-    const char *namePtr
-    )
-{
-    return 256;
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */

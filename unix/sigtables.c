@@ -214,4 +214,44 @@ GetSignalIdFromObj (
     }
 }
 
+MODULE_SCOPE
+const char *
+GetNameBySignum (
+    Tcl_Interp *interp,
+    int signum
+    )
+{
+    Tcl_HashEntry *entryPtr;
+
+    entryPtr = Tcl_FindHashEntry(&tables.signums, WORDKEY(signum));
+    if (entryPtr != NULL) {
+	Tcl_Obj *sigObj = Tcl_GetHashValue(entryPtr);
+	return sigObj->bytes;
+    } else {
+	Tcl_SetObjResult(interp,
+	    Tcl_NewStringObj("invalid signum", -1));
+	return NULL;
+    }
+}
+
+MODULE_SCOPE
+int
+GetSignumByName (
+    Tcl_Interp *interp,
+    const char *namePtr
+    )
+{
+    Tcl_HashEntry *entryPtr;
+
+    entryPtr = Tcl_FindHashEntry(&tables.names, namePtr);
+    if (entryPtr != NULL) {
+	Tcl_Obj *sigObj = Tcl_GetHashValue(entryPtr);
+	return sigObj->internalRep.longValue;
+    } else {
+	Tcl_SetObjResult(interp,
+	    Tcl_NewStringObj("invalid signal name", -1));
+	return -1;
+    }
+}
+
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */

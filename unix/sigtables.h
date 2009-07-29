@@ -34,6 +34,20 @@ GetSignalIdFromObj (
     Tcl_Obj *nameObj
     );
 
+MODULE_SCOPE
+const char *
+GetNameBySignum (
+    Tcl_Interp *interp,
+    int signum
+    );
+
+MODULE_SCOPE
+int
+GetSignumByName (
+    Tcl_Interp *interp,
+    const char *namePtr
+    );
+
 #define __POSIX_SIGNAL_SIGTABLES_H
 #endif /* __POSIX_SIGNAL_SIGTABLES_H */
 
