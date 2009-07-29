@@ -1,6 +1,7 @@
 #include <tcl.h>
 #include <signal.h>
 #include "sigtables.h"
+#include "sigobj.h"
 #include "info.h"
 
 
@@ -75,6 +76,32 @@ TopicCmd_Signals (
 }
 
 
+static
+int
+TopicCmd_Name (
+    ClientData clientData,
+    Tcl_Interp *interp,
+    int objc,
+    Tcl_Obj *const objv[]
+    )
+{
+    const char *namePtr;
+
+    if (objc != 4) {
+	Tcl_WrongNumArgs(interp, 3, objv, "signum");
+	return TCL_ERROR;
+    }
+
+    namePtr = GetSignalNameFromObj(interp, objv[3]);
+    if (namePtr != NULL) {
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(namePtr, -1));
+	return TCL_OK;
+    } else {
+	return TCL_ERROR;
+    }
+}
+
+
 MODULE_SCOPE
 int
 Command_Info (
@@ -84,11 +111,13 @@ Command_Info (
     Tcl_Obj *const objv[]
     )
 {
-    const char *topics[] = { "sigrtmin", "sigrtmax", "signals", NULL };
+    const char *topics[] = { "sigrtmin", "sigrtmax", "signals",
+	    "name", NULL };
     Tcl_ObjCmdProc *const procs[] = {
 	TopicCmd_Sigrtmin,
 	TopicCmd_Sigrtmax,
-	TopicCmd_Signals
+	TopicCmd_Signals,
+	TopicCmd_Name
     };
 
     int topic;
