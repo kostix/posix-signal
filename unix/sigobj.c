@@ -152,7 +152,7 @@ SetFromAny (
 	 * so we just update the integer inernal rep
 	 * and patch the object's typePtr */
 	objPtr->internalRep.longValue = signum;
-	objPtr->typePtr   = &posixSignalObjType;
+	objPtr->typePtr = &posixSignalObjType;
 	return TCL_OK;
     } else {
 	return TCL_ERROR;
