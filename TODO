@@ -1,9 +1,3 @@
-* Fix problem in custom Tcl_Obj:
-
-  % posix::signal info name SIGHUP
-  alloc: invalid block: 0x8c2c810: 18 8
-  Aborted
-
 * Make specialist functions which create a
   signal objects from an integer argument
   representing a signum and from a string

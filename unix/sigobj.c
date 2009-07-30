@@ -1,5 +1,6 @@
 #include <tcl.h>
 #include <string.h>
+#include <assert.h>
 #include "sigtables.h"
 #include "sigobj.h"
 
@@ -13,15 +14,14 @@ typedef struct Tcl_ObjType {
 } Tcl_ObjType;
 */
 
-static void FreeInternalRep (Tcl_Obj *objPtr);
-static void DupInternalRep (Tcl_Obj *srcPtr, Tcl_Obj *dupPtr);
+static void UpdateString (Tcl_Obj *objPtr);
 static int SetFromAny (Tcl_Interp *interp, Tcl_Obj *objPtr);
 
 static Tcl_ObjType posixSignalObjType = {
     "posix-signal",      /* name */
-    FreeInternalRep,     /* freeIntRepProc */
-    DupInternalRep,      /* dupIntRepProc */
-    NULL,                /* updateStringProc */
+    NULL,                /* freeIntRepProc */
+    NULL,                /* dupIntRepProc */
+    UpdateString,        /* updateStringProc */
     SetFromAny           /* setFromAnyProc */
 };
 
@@ -91,28 +91,20 @@ GetSignalNameFromObj (
 
 static
 void
-FreeInternalRep (
+UpdateString (
     Tcl_Obj *objPtr
     )
 {
-    ckfree(objPtr->bytes);
-}
+    int signum, len;
+    const char *namePtr;
 
-static
-void
-DupInternalRep (
-    Tcl_Obj *srcPtr,
-    Tcl_Obj *dupPtr
-    )
-{
-    int len;
+    signum = objPtr->internalRep.longValue;
+    namePtr = GetNameBySignum(NULL, signum);
+    assert(namePtr != NULL);
 
-    len = srcPtr->length;
-    dupPtr->bytes = ckalloc(len + 1);
-    memcpy(dupPtr->bytes, srcPtr->bytes, len + 1);
-    dupPtr->length = len;
-
-    dupPtr->internalRep.longValue = srcPtr->internalRep.longValue;
+    len = strlen(namePtr);
+    objPtr->bytes = ckalloc(len + 1);
+    memcpy(objPtr->bytes, namePtr, len + 1);
 }
 
 static
