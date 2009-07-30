@@ -25,9 +25,8 @@ static Tcl_ObjType posixSignalObjType = {
     SetFromAny           /* setFromAnyProc */
 };
 
-/* TODO duplication of a string into a Tcl_Obj's string rep
- * is used three times in this module -- looks like
- * a candidate for a separate proc or a macro */
+static void InitStringRep (Tcl_Obj *objPtr, const char *bytesPtr,
+	int length);
 
 /* Internal function -- does not validate neither signum,
  * nor namePtr, nor their coherency */
@@ -39,17 +38,10 @@ CreatePosixSignalObj (
     )
 {
     Tcl_Obj *sigObj;
-    int len;
 
     sigObj = Tcl_NewObj();
-
-    len = strlen(namePtr);
-    sigObj->bytes = ckalloc(len + 1);
-    memcpy(sigObj->bytes, namePtr, len + 1);
-    sigObj->length = len;
-
+    InitStringRep(sigObj, namePtr, strlen(namePtr));
     sigObj->internalRep.longValue = signum;
-
     sigObj->typePtr = &posixSignalObjType;
 
     return sigObj;
@@ -95,16 +87,14 @@ UpdateString (
     Tcl_Obj *objPtr
     )
 {
-    int signum, len;
+    int signum;
     const char *namePtr;
 
     signum = objPtr->internalRep.longValue;
     namePtr = GetNameBySignum(NULL, signum);
     assert(namePtr != NULL);
 
-    len = strlen(namePtr);
-    objPtr->bytes = ckalloc(len + 1);
-    memcpy(objPtr->bytes, namePtr, len + 1);
+    InitStringRep(objPtr, namePtr, strlen(namePtr));
 }
 
 static
@@ -121,10 +111,7 @@ SetFromAny (
     if (res == TCL_OK) {
 	namePtr = GetNameBySignum(interp, signum);
 	if (namePtr != NULL) {
-	    const int len = strlen(namePtr);
-	    objPtr->bytes = ckalloc(len + 1);
-	    memcpy(objPtr->bytes, namePtr, len + 1);
-	    objPtr->length = len;
+	    InitStringRep(objPtr, namePtr, strlen(namePtr));
 	    /* FIXME do we need this? */
 	    objPtr->internalRep.longValue = signum;
 	    objPtr->typePtr = &posixSignalObjType;
@@ -157,6 +144,19 @@ SetFromAny (
     } else {
 	return TCL_ERROR;
     }
+}
+
+static
+void
+InitStringRep (
+    Tcl_Obj *objPtr,
+    const char *bytesPtr,
+    int length
+    )
+{
+    objPtr->bytes = ckalloc(length + 1);
+    memcpy(objPtr->bytes, bytesPtr, length + 1);
+    objPtr->length = length;
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
