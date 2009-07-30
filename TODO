@@ -1,23 +1,65 @@
+* Fix problem in custom Tcl_Obj:
+
+  % posix::signal info name SIGHUP
+  alloc: invalid block: 0x8c2c810: 18 8
+  Aborted
+
+* Make specialist functions which create a
+  signal objects from an integer argument
+  representing a signum and from a string
+  argument representing a signal name.
+
+  Rationale: currently we only support
+  "converting from any type" which behaves
+  oddly when it's specifically requested
+  to get a signal name for an integer,
+  or to get a signum by a signal name.
+
+  These functions are to be used in
+  [info name] and [info signum].
+
+* Make GetNameFromSignalObj() more like
+  Tcl_GetStringFromObj() -- it should accept
+  the third argument of type int*, which is
+  a pointer to receive the length of the returned
+  string; if this pointer is NULL, the length
+  is not returned.
+
+* GetNameFromSignalObj() and GetSignumFromSignalObj()
+  should accept NULL as their "interp" argument,
+  and fail silently, when the conversion is not
+  possible. This is to behave as the standard Tcl
+  types do.
+
+* The hash table for by-signum lookup seems like
+  an overkill -- a simple sorted list (with gaps)
+  of pointers to signal objects would be OK.
+
+  Note that care should be taken not to stomp on
+  existing objects when constructing the table
+  as certain signals have several names for the
+  same signum.
+
+* Hash table lookup code in sigtables.c accesses
+  the internals of the referenced Tcl_Objs
+  directly -- devise some private accessor functions
+  (macros?) for this.
+
+* Hash table lookup functions should mimic the behaviour
+  of Tcl_GetIndexFromObj() and return a proper error
+  message which includes all the allowed elements from
+  the respective tables.
+
+* Implement [info signum] and [info exists].
+
+  The first should only attempt to parse an integer,
+  the second should parse "from any".
+
 * Implement changing signal disposition to
   SIG_DFL and SIG_IGN.
 
 * Think about a robust way to keep signal dispositions
   and the table of syncpoints in sync.
-
-* Implement comprehensive parsing of signal names:
-  1) Both long and short names should be supported,
-     i.e. SIGHUP and HUP should both work.
-  2) Integers should be supported, like 1 or 21.
-  3) Both forms should accept a leading minus sign,
-     like -SIGTERM or -9 (see kill(2)).
-
-  This possibly implies the need to create our custom
-  Tcl_Obj type which would cache the signal number
-  along with its string rep.
-
-  Such an object could be almost identical to the
-  Tcl_IntObj, but with different procs for updating
-  the string and integer representations.
 
 * Provide for listing of POSIX real-time signals
   in the signals[] table.
