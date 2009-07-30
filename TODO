@@ -25,6 +25,25 @@
   possible. This is to behave as the standard Tcl
   types do.
 
+* Signal object's SetFromAny is now able to show
+  three different error messages depending on the
+  path which results in an error reporting:
+  two error messages come from GetSignumFromSignalObj
+  and GetNameFromSignalObj, the third is generated
+  in SetFromAny.
+
+  We should either settle on just one error message
+  (by passing NULL to Get*FromObj) or make those
+  two functions return sensible lists of allowed
+  names and signums, leaving the third error message
+  as is, as it is only generated when it was impossible
+  to interpret the object neither as an integer,
+  nor as a string.
+
+  It might turn out that in the latter case we should
+  just panic, as a Tcl object which has an invalid
+  string rep and no way to regen it seems to be invalid.
+
 * The hash table for by-signum lookup seems like
   an overkill -- a simple sorted list (with gaps)
   of pointers to signal objects would be OK.
