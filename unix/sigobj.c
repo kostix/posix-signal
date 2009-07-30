@@ -134,8 +134,18 @@ SetFromAny (
 	}
     }
 
-    namePtr = Tcl_GetStringFromObj(objPtr, NULL);
-    signum = GetSignumByName(interp, namePtr);
+    if (objPtr->bytes == NULL) {
+	if (objPtr->typePtr != NULL
+		&& objPtr->typePtr->updateStringProc != NULL) {
+	    objPtr->typePtr->updateStringProc(objPtr);
+	} else {
+	    /* TODO elaborate on signal message? */
+	    Tcl_SetObjResult(interp,
+		    Tcl_NewStringObj("invalid signal", -1));
+	    return TCL_ERROR;
+	}
+    }
+    signum = GetSignumByName(interp, objPtr->bytes);
     if (signum > 0) {
 	/* The existing string rep is now verified
 	 * to be a valid signal name,
