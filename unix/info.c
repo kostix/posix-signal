@@ -86,15 +86,16 @@ TopicCmd_Name (
     )
 {
     const char *namePtr;
+    int len;
 
     if (objc != 4) {
 	Tcl_WrongNumArgs(interp, 3, objv, "signum");
 	return TCL_ERROR;
     }
 
-    namePtr = GetSignalNameFromObj(interp, objv[3]);
+    namePtr = GetSignalNameFromObj(interp, objv[3], &len);
     if (namePtr != NULL) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj(namePtr, -1));
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(namePtr, len));
 	return TCL_OK;
     } else {
 	return TCL_ERROR;

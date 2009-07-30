@@ -12,13 +12,6 @@
   These functions are to be used in
   [info name] and [info signum].
 
-* Make GetNameFromSignalObj() more like
-  Tcl_GetStringFromObj() -- it should accept
-  the third argument of type int*, which is
-  a pointer to receive the length of the returned
-  string; if this pointer is NULL, the length
-  is not returned.
-
 * GetNameFromSignalObj() and GetSignumFromSignalObj()
   should accept NULL as their "interp" argument,
   and fail silently, when the conversion is not

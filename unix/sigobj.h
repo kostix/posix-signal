@@ -18,7 +18,8 @@ MODULE_SCOPE
 const char *
 GetSignalNameFromObj (
     Tcl_Interp *interp,
-    Tcl_Obj *objPtr
+    Tcl_Obj *objPtr,
+    int *lengthPtr
     );
 
 #define __POSIX_SIGNAL_SIGOBJ_H

@@ -68,13 +68,17 @@ MODULE_SCOPE
 const char *
 GetSignalNameFromObj (
     Tcl_Interp *interp,
-    Tcl_Obj *objPtr
+    Tcl_Obj *objPtr,
+    int *lengthPtr
     )
 {
     int res;
 
     res = Tcl_ConvertToType(interp, objPtr, &posixSignalObjType);
     if (res == TCL_OK) {
+	if (lengthPtr != NULL) {
+	    *lengthPtr = objPtr->length;
+	}
 	return objPtr->bytes;
     } else {
 	return NULL;
