@@ -85,17 +85,23 @@ TopicCmd_Name (
     Tcl_Obj *const objv[]
     )
 {
+    int res, signum;
     const char *namePtr;
-    int len;
 
     if (objc != 4) {
 	Tcl_WrongNumArgs(interp, 3, objv, "signum");
 	return TCL_ERROR;
     }
 
-    namePtr = GetSignalNameFromObj(interp, objv[3], &len);
+    res = Tcl_GetIntFromObj(interp, objv[3], &signum);
+    if (res == TCL_OK) {
+	namePtr = GetNameBySignum(interp, signum);
+    } else {
+	namePtr = NULL;
+    }
+
     if (namePtr != NULL) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj(namePtr, len));
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(namePtr, -1));
 	return TCL_OK;
     } else {
 	return TCL_ERROR;
@@ -112,6 +118,7 @@ TopicCmd_Signum (
     Tcl_Obj *const objv[]
     )
 {
+    const char *namePtr;
     int signum;
 
     if (objc != 4) {
@@ -119,7 +126,8 @@ TopicCmd_Signum (
 	return TCL_ERROR;
     }
 
-    signum = GetSignumFromObj(interp, objv[3]);
+    namePtr = Tcl_GetStringFromObj(objv[3], NULL);
+    signum  = GetSignumByName(interp, namePtr);
     if (signum != -1) {
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(signum));
 	return TCL_OK;
