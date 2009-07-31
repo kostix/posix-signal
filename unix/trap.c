@@ -1,6 +1,6 @@
 #include <tcl.h>
 #include <signal.h>
-#include "sigtables.h"
+#include "sigobj.h"
 #include "syncpoints.h"
 #include "events.h"
 #include "utils.h"
@@ -47,7 +47,7 @@ TrapSet (
 {
     int id, res;
 
-    id = GetSignalIdFromObj(interp, sigObj);
+    id = GetSignumFromObj(interp, sigObj);
     if (id == -1) {
 	return TCL_ERROR;
     }
@@ -91,7 +91,7 @@ TrapGet (
     int id;
     Tcl_Obj *cmdObj;
 
-    id = GetSignalIdFromObj(interp, sigObj);
+    id = GetSignumFromObj(interp, sigObj);
     if (id == -1) {
 	return TCL_ERROR;
     }
