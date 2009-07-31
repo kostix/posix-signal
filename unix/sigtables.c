@@ -81,7 +81,7 @@ int max_signum;
 
 static struct {
     Tcl_Obj **bysignum;
-    Tcl_HashTable names;
+    Tcl_HashTable byname;
 } tables;
 
 static
@@ -93,7 +93,7 @@ InitLookupTables (void)
     const int nbytes = sizeof(Tcl_Obj*) * max_signum;
     tables.bysignum = (Tcl_Obj**) ckalloc(nbytes);
 
-    Tcl_InitHashTable(&tables.names, TCL_STRING_KEYS);
+    Tcl_InitHashTable(&tables.byname, TCL_STRING_KEYS);
 
     for (i = 0; i < max_signum; ++i) {
 	tables.bysignum[i] = NULL;
@@ -101,24 +101,24 @@ InitLookupTables (void)
 
     for (i = 0; i < nsigs; ++i) {
 	int signum, index;
-	const char *name;
+	const char *namePtr;
 	Tcl_Obj *sigObj;
 	Tcl_HashEntry *entryPtr;
 	int isnew;
 
-	signum = signals[i].signal;
-	name   = signals[i].name;
+	signum  = signals[i].signal;
+	namePtr = signals[i].name;
 
 	index = SIGOFFSET(signum);
 	sigObj = tables.bysignum[index];
 	if (sigObj == NULL) {
-	    sigObj = CreatePosixSignalObj(signum, name);
+	    sigObj = CreatePosixSignalObj(signum, namePtr);
 	    Tcl_IncrRefCount(sigObj);
 
 	    tables.bysignum[index] = sigObj;
 	}
 
-	entryPtr = Tcl_CreateHashEntry(&tables.names, name, &isnew);
+	entryPtr = Tcl_CreateHashEntry(&tables.byname, namePtr, &isnew);
 	assert(entryPtr != NULL && isnew);
 	Tcl_SetHashValue(entryPtr, sigObj);
     }
@@ -223,7 +223,7 @@ GetSignumByName (
 {
     Tcl_HashEntry *entryPtr;
 
-    entryPtr = Tcl_FindHashEntry(&tables.names, namePtr);
+    entryPtr = Tcl_FindHashEntry(&tables.byname, namePtr);
     if (entryPtr != NULL) {
 	Tcl_Obj *sigObj = Tcl_GetHashValue(entryPtr);
 	return sigObj->internalRep.longValue;
