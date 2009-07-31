@@ -23,15 +23,6 @@
   just panic, as a Tcl object which has an invalid
   string rep and no way to regen it seems to be invalid.
 
-* The hash table for by-signum lookup seems like
-  an overkill -- a simple sorted list (with gaps)
-  of pointers to signal objects would be OK.
-
-  Note that care should be taken not to stomp on
-  existing objects when constructing the table
-  as certain signals have several names for the
-  same signum.
-
 * Hash table lookup code in sigtables.c accesses
   the internals of the referenced Tcl_Objs
   directly -- devise some private accessor functions

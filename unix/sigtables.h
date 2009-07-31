@@ -28,12 +28,6 @@ FreeSignalVector(
     SignalVector *svPtr
     );
 
-int
-GetSignalIdFromObj (
-    Tcl_Interp *interp,
-    Tcl_Obj *nameObj
-    );
-
 MODULE_SCOPE
 const char *
 GetNameBySignum (

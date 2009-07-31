@@ -79,61 +79,48 @@ const int nsigs = sizeof(signals)/sizeof(signals[0]);
  * system this package was compiled for */
 int max_signum;
 
-static const char **signames;
-
 static struct {
-    Tcl_HashTable signums;
+    Tcl_Obj **bysignum;
     Tcl_HashTable names;
 } tables;
 
 static
 void
-InitLookupTable (void)
+InitLookupTables (void)
 {
     int i;
 
-    const int len = nsigs + 1; // account for the terminating NULL entry
+    const int nbytes = sizeof(Tcl_Obj*) * max_signum;
+    tables.bysignum = (Tcl_Obj**) ckalloc(nbytes);
 
-    signames = (const char**) ckalloc(sizeof(signames[0]) * len);
+    Tcl_InitHashTable(&tables.names, TCL_STRING_KEYS);
 
-    for (i = 0; i < nsigs; ++i) {
-	signames[i] = signals[i].name;
+    for (i = 0; i < max_signum; ++i) {
+	tables.bysignum[i] = NULL;
     }
-    signames[nsigs] = NULL;
-}
-
-static
-void
-InitHashTables (void)
-{
-    int i;
-
-    Tcl_InitHashTable(&tables.signums, TCL_ONE_WORD_KEYS);
-    Tcl_InitHashTable(&tables.names,   TCL_STRING_KEYS);
 
     for (i = 0; i < nsigs; ++i) {
-	int signum, isnew;
+	int signum, index;
 	const char *name;
 	Tcl_Obj *sigObj;
 	Tcl_HashEntry *entryPtr;
+	int isnew;
 
-	signum  = signals[i].signal;
-	name    = signals[i].name;
+	signum = signals[i].signal;
+	name   = signals[i].name;
 
-	sigObj = CreatePosixSignalObj(signum, name);
-
-	entryPtr = Tcl_CreateHashEntry(&tables.signums,
-		WORDKEY(signum), &isnew);
-	assert(entryPtr != NULL);
-	if (isnew) {
-	    Tcl_SetHashValue(entryPtr, sigObj);
+	index = SIGOFFSET(signum);
+	sigObj = tables.bysignum[index];
+	if (sigObj == NULL) {
+	    sigObj = CreatePosixSignalObj(signum, name);
 	    Tcl_IncrRefCount(sigObj);
+
+	    tables.bysignum[index] = sigObj;
 	}
 
 	entryPtr = Tcl_CreateHashEntry(&tables.names, name, &isnew);
 	assert(entryPtr != NULL && isnew);
 	Tcl_SetHashValue(entryPtr, sigObj);
-	Tcl_IncrRefCount(sigObj);
     }
 }
 
@@ -192,26 +179,7 @@ InitSignalTables (void)
     assert(max > 0);
     max_signum = max;
 
-    InitLookupTable();
-    InitHashTables();
-}
-
-MODULE_SCOPE
-int
-GetSignalIdFromObj (
-    Tcl_Interp *interp,
-    Tcl_Obj *nameObj
-    )
-{
-    int res, index;
-
-    res = Tcl_GetIndexFromObj(interp, nameObj, signames,
-	    "signal name", 0, &index);
-    if (res == TCL_OK) {
-	return signals[index].signal;
-    } else {
-	return -1;
-    }
+    InitLookupTables();
 }
 
 MODULE_SCOPE
@@ -221,12 +189,24 @@ GetNameBySignum (
     int signum
     )
 {
-    Tcl_HashEntry *entryPtr;
+    int index;
+    const char *namePtr;
 
-    entryPtr = Tcl_FindHashEntry(&tables.signums, WORDKEY(signum));
-    if (entryPtr != NULL) {
-	Tcl_Obj *sigObj = Tcl_GetHashValue(entryPtr);
-	return sigObj->bytes;
+    index = SIGOFFSET(signum);
+
+    if (0 <= index && index <= SIGOFFSET(max_signum)) {
+	Tcl_Obj *sigObj = tables.bysignum[index];
+	if (sigObj != NULL) {
+	    namePtr = sigObj->bytes;
+	} else {
+	    namePtr = NULL;
+	}
+    } else {
+	namePtr = NULL;
+    }
+
+    if (namePtr != NULL) {
+	return namePtr;
     } else {
 	Tcl_SetObjResult(interp,
 	    Tcl_NewStringObj("invalid signum", -1));
