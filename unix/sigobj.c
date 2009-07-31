@@ -91,14 +91,14 @@ UpdateString (
     Tcl_Obj *objPtr
     )
 {
-    int signum;
+    int signum, len;
     const char *namePtr;
 
     signum = objPtr->internalRep.longValue;
-    namePtr = GetNameBySignum(NULL, signum);
+    namePtr = GetNameBySignum(NULL, signum, &len);
     assert(namePtr != NULL);
 
-    InitStringRep(objPtr, namePtr, strlen(namePtr));
+    InitStringRep(objPtr, namePtr, len);
 }
 
 static
@@ -108,14 +108,14 @@ SetFromAny (
     Tcl_Obj *objPtr
     )
 {
-    int res, signum;
+    int res, signum, len;
     const char *namePtr;
 
     res = Tcl_GetIntFromObj(NULL, objPtr, &signum);
     if (res == TCL_OK) {
-	namePtr = GetNameBySignum(interp, signum);
+	namePtr = GetNameBySignum(interp, signum, &len);
 	if (namePtr != NULL) {
-	    InitStringRep(objPtr, namePtr, strlen(namePtr));
+	    InitStringRep(objPtr, namePtr, len);
 	    /* FIXME do we need this? */
 	    objPtr->internalRep.longValue = signum;
 	    objPtr->typePtr = &posixSignalObjType;

@@ -186,7 +186,8 @@ MODULE_SCOPE
 const char *
 GetNameBySignum (
     Tcl_Interp *interp,
-    int signum
+    int signum,
+    int *lengthPtr
     )
 {
     int index;
@@ -198,6 +199,9 @@ GetNameBySignum (
 	Tcl_Obj *sigObj = tables.bysignum[index];
 	if (sigObj != NULL) {
 	    namePtr = sigObj->bytes;
+	    if (lengthPtr != NULL) {
+		*lengthPtr = sigObj->length;
+	    }
 	} else {
 	    namePtr = NULL;
 	}

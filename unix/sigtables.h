@@ -32,7 +32,8 @@ MODULE_SCOPE
 const char *
 GetNameBySignum (
     Tcl_Interp *interp,
-    int signum
+    int signum,
+    int *lengthPtr
     );
 
 MODULE_SCOPE

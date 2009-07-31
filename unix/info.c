@@ -85,7 +85,7 @@ TopicCmd_Name (
     Tcl_Obj *const objv[]
     )
 {
-    int res, signum;
+    int res, signum, len;
     const char *namePtr;
 
     if (objc != 4) {
@@ -95,13 +95,13 @@ TopicCmd_Name (
 
     res = Tcl_GetIntFromObj(interp, objv[3], &signum);
     if (res == TCL_OK) {
-	namePtr = GetNameBySignum(interp, signum);
+	namePtr = GetNameBySignum(interp, signum, &len);
     } else {
 	namePtr = NULL;
     }
 
     if (namePtr != NULL) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj(namePtr, -1));
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(namePtr, len));
 	return TCL_OK;
     } else {
 	return TCL_ERROR;
