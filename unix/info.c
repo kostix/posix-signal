@@ -103,6 +103,32 @@ TopicCmd_Name (
 }
 
 
+static
+int
+TopicCmd_Signum (
+    ClientData clientData,
+    Tcl_Interp *interp,
+    int objc,
+    Tcl_Obj *const objv[]
+    )
+{
+    int signum;
+
+    if (objc != 4) {
+	Tcl_WrongNumArgs(interp, 3, objv, "name");
+	return TCL_ERROR;
+    }
+
+    signum = GetSignumFromObj(interp, objv[3]);
+    if (signum != -1) {
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(signum));
+	return TCL_OK;
+    } else {
+	return TCL_ERROR;
+    }
+}
+
+
 MODULE_SCOPE
 int
 Command_Info (
@@ -113,12 +139,13 @@ Command_Info (
     )
 {
     const char *topics[] = { "sigrtmin", "sigrtmax", "signals",
-	    "name", NULL };
+	    "name", "signum", NULL };
     Tcl_ObjCmdProc *const procs[] = {
 	TopicCmd_Sigrtmin,
 	TopicCmd_Sigrtmax,
 	TopicCmd_Signals,
-	TopicCmd_Name
+	TopicCmd_Name,
+	TopicCmd_Signum
     };
 
     int topic;
