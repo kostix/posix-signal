@@ -6,8 +6,6 @@
 
 #define SIGDECL(SIG) { SIG, #SIG }
 
-#define WORDKEY(KEY) ((char*) KEY)
-
 const Signal
 signals[] = {
     /* POSIX.1-1990 signals */
