@@ -1,9 +1,3 @@
-* GetNameFromSignalObj() and GetSignumFromSignalObj()
-  should accept NULL as their "interp" argument,
-  and fail silently, when the conversion is not
-  possible. This is to behave as the standard Tcl
-  types do.
-
 * Signal object's SetFromAny is now able to show
   three different error messages depending on the
   path which results in an error reporting:

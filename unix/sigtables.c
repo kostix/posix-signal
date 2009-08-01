@@ -201,8 +201,10 @@ GetNameBySignum (
 	}
 	return objPtr->bytes;
     } else {
-	Tcl_SetObjResult(interp,
-	    Tcl_NewStringObj("invalid signum", -1));
+	if (interp != NULL) {
+	    Tcl_SetObjResult(interp,
+		Tcl_NewStringObj("invalid signum", -1));
+	}
 	return NULL;
     }
 }
@@ -220,8 +222,10 @@ GetSignumByName (
     if (objPtr != NULL) {
 	return objPtr->internalRep.longValue;
     } else {
-	Tcl_SetObjResult(interp,
-	    Tcl_NewStringObj("invalid signal name", -1));
+	if (interp != NULL) {
+	    Tcl_SetObjResult(interp,
+		Tcl_NewStringObj("invalid signal name", -1));
+	}
 	return -1;
     }
 }
