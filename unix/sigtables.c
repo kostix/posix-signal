@@ -82,6 +82,9 @@ static struct {
     Tcl_HashTable byname;
 } tables;
 
+static Tcl_Obj* FindObjBySignum (int signum);
+static Tcl_Obj* FindObjByName (const char *namePtr);
+
 static
 void
 InitLookupTables (void)
@@ -188,27 +191,15 @@ GetNameBySignum (
     int *lengthPtr
     )
 {
-    int index;
-    const char *namePtr;
+    Tcl_Obj *objPtr;
 
-    index = SIGOFFSET(signum);
+    objPtr = FindObjBySignum(signum);
 
-    if (0 <= index && index <= SIGOFFSET(max_signum)) {
-	Tcl_Obj *sigObj = tables.bysignum[index];
-	if (sigObj != NULL) {
-	    namePtr = sigObj->bytes;
-	    if (lengthPtr != NULL) {
-		*lengthPtr = sigObj->length;
-	    }
-	} else {
-	    namePtr = NULL;
+    if (objPtr != NULL) {
+	if (lengthPtr != NULL) {
+	    *lengthPtr = objPtr->length;
 	}
-    } else {
-	namePtr = NULL;
-    }
-
-    if (namePtr != NULL) {
-	return namePtr;
+	return objPtr->bytes;
     } else {
 	Tcl_SetObjResult(interp,
 	    Tcl_NewStringObj("invalid signum", -1));
@@ -223,16 +214,46 @@ GetSignumByName (
     const char *namePtr
     )
 {
-    Tcl_HashEntry *entryPtr;
+    Tcl_Obj *objPtr;
 
-    entryPtr = Tcl_FindHashEntry(&tables.byname, namePtr);
-    if (entryPtr != NULL) {
-	Tcl_Obj *sigObj = Tcl_GetHashValue(entryPtr);
-	return sigObj->internalRep.longValue;
+    objPtr = FindObjByName(namePtr);
+    if (objPtr != NULL) {
+	return objPtr->internalRep.longValue;
     } else {
 	Tcl_SetObjResult(interp,
 	    Tcl_NewStringObj("invalid signal name", -1));
 	return -1;
+    }
+}
+
+static
+Tcl_Obj*
+FindObjBySignum (
+    int signum
+    )
+{
+    const int index = SIGOFFSET(signum);
+
+    if (0 <= index && index <= SIGOFFSET(max_signum)) {
+	return tables.bysignum[index];
+    } else {
+	return NULL;
+    }
+}
+
+static
+Tcl_Obj*
+FindObjByName (
+    const char *namePtr
+    )
+{
+    Tcl_HashEntry *entryPtr;
+
+    entryPtr = Tcl_FindHashEntry(&tables.byname, namePtr);
+    if (entryPtr != NULL) {
+	return (Tcl_Obj*) Tcl_GetHashValue(entryPtr);
+    } else {
+	return NULL;
     }
 }
 
