@@ -137,6 +137,29 @@ TopicCmd_Signum (
 }
 
 
+static
+int
+TopicCmd_Exists (
+    ClientData clientData,
+    Tcl_Interp *interp,
+    int objc,
+    Tcl_Obj *const objv[]
+    )
+{
+    int exists;
+
+    if (objc != 4) {
+	Tcl_WrongNumArgs(interp, 3, objv, "signal");
+	return TCL_ERROR;
+    }
+
+    exists = GetSignumFromObj(NULL, objv[3]) != -1;
+
+    Tcl_SetObjResult(interp, Tcl_NewBooleanObj(exists));
+    return TCL_OK;
+}
+
+
 MODULE_SCOPE
 int
 Command_Info (
@@ -147,13 +170,14 @@ Command_Info (
     )
 {
     const char *topics[] = { "sigrtmin", "sigrtmax", "signals",
-	    "name", "signum", NULL };
+	    "name", "signum", "exists", NULL };
     Tcl_ObjCmdProc *const procs[] = {
 	TopicCmd_Sigrtmin,
 	TopicCmd_Sigrtmax,
 	TopicCmd_Signals,
 	TopicCmd_Name,
-	TopicCmd_Signum
+	TopicCmd_Signum,
+	TopicCmd_Exists
     };
 
     int topic;
