@@ -1,7 +1,6 @@
 #include <tcl.h>
 #include <signal.h>
 #include <assert.h>
-#include "sigobj.h"
 #include "sigtables.h"
 
 #define SIGDECL(SIG) { SIG, #SIG, (sizeof(#SIG) - 1) }
@@ -78,12 +77,12 @@ const int nsigs = sizeof(signals)/sizeof(signals[0]);
 int max_signum;
 
 static struct {
-    Tcl_Obj **bysignum;
+    const Signal **bysignum;
     Tcl_HashTable byname;
 } tables;
 
-static Tcl_Obj* FindObjBySignum (int signum);
-static Tcl_Obj* FindObjByName (const char *namePtr);
+static const Signal* FindSignalBySignum (int signum);
+static const Signal* FindSignalByName (const char *namePtr);
 
 static
 void
@@ -91,8 +90,8 @@ InitLookupTables (void)
 {
     int i;
 
-    const int nbytes = sizeof(Tcl_Obj*) * max_signum;
-    tables.bysignum = (Tcl_Obj**) ckalloc(nbytes);
+    const int nbytes = sizeof(const Signal *) * max_signum;
+    tables.bysignum = (const Signal **) ckalloc(nbytes);
 
     Tcl_InitHashTable(&tables.byname, TCL_STRING_KEYS);
 
@@ -101,9 +100,9 @@ InitLookupTables (void)
     }
 
     for (i = 0; i < nsigs; ++i) {
+	const Signal *sigPtr;
 	int signum, index;
 	const char *namePtr;
-	Tcl_Obj *sigObj;
 	Tcl_HashEntry *entryPtr;
 	int isnew;
 
@@ -111,17 +110,15 @@ InitLookupTables (void)
 	namePtr = signals[i].name;
 
 	index = SIGOFFSET(signum);
-	sigObj = tables.bysignum[index];
-	if (sigObj == NULL) {
-	    sigObj = CreatePosixSignalObj(signum, namePtr);
-	    Tcl_IncrRefCount(sigObj);
-
-	    tables.bysignum[index] = sigObj;
+	sigPtr = tables.bysignum[index];
+	if (sigPtr == NULL) {
+	    sigPtr = &signals[i];
+	    tables.bysignum[index] = sigPtr;
 	}
 
 	entryPtr = Tcl_CreateHashEntry(&tables.byname, namePtr, &isnew);
 	assert(entryPtr != NULL && isnew);
-	Tcl_SetHashValue(entryPtr, sigObj);
+	Tcl_SetHashValue(entryPtr, sigPtr);
     }
 }
 
@@ -191,15 +188,15 @@ GetNameBySignum (
     int *lengthPtr
     )
 {
-    Tcl_Obj *objPtr;
+    const Signal *sigPtr;
 
-    objPtr = FindObjBySignum(signum);
+    sigPtr = FindSignalBySignum(signum);
 
-    if (objPtr != NULL) {
+    if (sigPtr != NULL) {
 	if (lengthPtr != NULL) {
-	    *lengthPtr = objPtr->length;
+	    *lengthPtr = sigPtr->length;
 	}
-	return objPtr->bytes;
+	return sigPtr->name;
     } else {
 	if (interp != NULL) {
 	    Tcl_SetObjResult(interp,
@@ -216,11 +213,11 @@ GetSignumByName (
     const char *namePtr
     )
 {
-    Tcl_Obj *objPtr;
+    const Signal *sigPtr;
 
-    objPtr = FindObjByName(namePtr);
-    if (objPtr != NULL) {
-	return objPtr->internalRep.longValue;
+    sigPtr = FindSignalByName(namePtr);
+    if (sigPtr != NULL) {
+	return sigPtr->signal;
     } else {
 	if (interp != NULL) {
 	    Tcl_SetObjResult(interp,
@@ -231,8 +228,8 @@ GetSignumByName (
 }
 
 static
-Tcl_Obj*
-FindObjBySignum (
+const Signal *
+FindSignalBySignum (
     int signum
     )
 {
@@ -246,8 +243,8 @@ FindObjBySignum (
 }
 
 static
-Tcl_Obj*
-FindObjByName (
+const Signal *
+FindSignalByName (
     const char *namePtr
     )
 {
@@ -255,7 +252,7 @@ FindObjByName (
 
     entryPtr = Tcl_FindHashEntry(&tables.byname, namePtr);
     if (entryPtr != NULL) {
-	return (Tcl_Obj*) Tcl_GetHashValue(entryPtr);
+	return (const Signal *) Tcl_GetHashValue(entryPtr);
     } else {
 	return NULL;
     }
