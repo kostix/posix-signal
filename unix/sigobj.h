@@ -1,11 +1,14 @@
 #ifndef __POSIX_SIGNAL_SIGOBJ_H
 
+/* Temporarily turned off to not introduce the
+ * dependency on sigtables.h */
+#if 0
 MODULE_SCOPE
 Tcl_Obj *
 CreatePosixSignalObj (
-    int signum,
-    const char *namePtr
+    const Signal *sigPtr
     );
+#endif
 
 MODULE_SCOPE
 int

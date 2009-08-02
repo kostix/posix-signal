@@ -4,6 +4,17 @@
 #include "sigtables.h"
 #include "sigobj.h"
 
+/* Convenience macros to access fields of the signal object's intrep */
+
+#define GET_SIGNUM(objPtr) \
+	((int) objPtr->internalRep.ptrAndLongRep.value)
+#define SET_SIGNUM(objPtr, signum) \
+	(objPtr->internalRep.ptrAndLongRep.value = (unsigned long) (signum))
+#define GET_SIGPTR(objPtr) \
+	((const Signal *) objPtr->internalRep.ptrAndLongRep.ptr)
+#define SET_SIGPTR(objPtr, sigPtr) \
+	(objPtr->internalRep.ptrAndLongRep.ptr = (void *) (sigPtr))
+
 /*
 typedef struct Tcl_ObjType {
     char *name;
@@ -28,22 +39,22 @@ static Tcl_ObjType posixSignalObjType = {
 static void InitStringRep (Tcl_Obj *objPtr, const char *bytesPtr,
 	int length);
 
-static void ReplaceIntRep (Tcl_Obj *objPtr, int signum);
+static void ReplaceIntRep (Tcl_Obj *objPtr, const Signal *sigPtr);
 
-/* Internal function -- does not validate neither signum,
- * nor namePtr, nor their coherency */
 MODULE_SCOPE
 Tcl_Obj *
 CreatePosixSignalObj (
-    int signum,
-    const char *namePtr
+    const Signal *sigPtr
     )
 {
     Tcl_Obj *sigObj;
 
     sigObj = Tcl_NewObj();
-    InitStringRep(sigObj, namePtr, strlen(namePtr));
-    sigObj->internalRep.longValue = signum;
+
+    SET_SIGNUM(sigObj, sigPtr->signal);
+    SET_SIGPTR(sigObj, sigPtr);
+    InitStringRep(sigObj, sigPtr->name, sigPtr->length);
+
     sigObj->typePtr = &posixSignalObjType;
 
     return sigObj;
@@ -60,7 +71,7 @@ GetSignumFromObj (
 
     res = Tcl_ConvertToType(interp, objPtr, &posixSignalObjType);
     if (res == TCL_OK) {
-	return objPtr->internalRep.longValue;
+	return GET_SIGNUM(objPtr);
     } else {
 	return -1;
     }
@@ -93,14 +104,10 @@ UpdateString (
     Tcl_Obj *objPtr
     )
 {
-    int signum, len;
-    const char *namePtr;
+    const Signal *sigPtr;
 
-    signum = objPtr->internalRep.longValue;
-    namePtr = GetNameBySignum(NULL, signum, &len);
-    assert(namePtr != NULL);
-
-    InitStringRep(objPtr, namePtr, len);
+    sigPtr = GET_SIGPTR(objPtr);
+    InitStringRep(objPtr, sigPtr->name, sigPtr->length);
 }
 
 static
@@ -110,17 +117,19 @@ SetFromAny (
     Tcl_Obj *objPtr
     )
 {
-    int res, signum, len;
-    const char *namePtr;
+    int res, signum;
+    const Signal *sigPtr;
 
     res = Tcl_GetIntFromObj(NULL, objPtr, &signum);
     if (res == TCL_OK) {
-	namePtr = GetNameBySignum(interp, signum, &len);
-	if (namePtr != NULL) {
+	sigPtr = FindSignalBySignum(signum);
+	if (sigPtr != NULL) {
 	    objPtr->bytes = NULL;
-	    ReplaceIntRep(objPtr, signum);
+	    ReplaceIntRep(objPtr, sigPtr);
 	    return TCL_OK;
 	} else {
+	    Tcl_SetObjResult(interp,
+		    Tcl_NewStringObj("invalid signal", -1));
 	    return TCL_ERROR;
 	}
     }
@@ -130,21 +139,22 @@ SetFromAny (
 		&& objPtr->typePtr->updateStringProc != NULL) {
 	    objPtr->typePtr->updateStringProc(objPtr);
 	} else {
-	    /* TODO elaborate on signal message? */
 	    Tcl_SetObjResult(interp,
 		    Tcl_NewStringObj("invalid signal", -1));
 	    return TCL_ERROR;
 	}
     }
-    signum = GetSignumByName(interp, objPtr->bytes);
-    if (signum > 0) {
+    sigPtr = FindSignalByName(objPtr->bytes);
+    if (sigPtr != NULL) {
 	/* The existing string rep is now verified
 	 * to be a valid signal name,
 	 * so we just update the integer inernal rep
 	 * and patch the object's typePtr */
-	ReplaceIntRep(objPtr, signum);
+	ReplaceIntRep(objPtr, sigPtr);
 	return TCL_OK;
     } else {
+	Tcl_SetObjResult(interp,
+		Tcl_NewStringObj("invalid signal", -1));
 	return TCL_ERROR;
     }
 }
@@ -166,7 +176,7 @@ static
 void
 ReplaceIntRep (
     Tcl_Obj *objPtr,
-    int signum
+    const Signal *sigPtr
     )
 {
     if (objPtr->typePtr != NULL
@@ -174,7 +184,8 @@ ReplaceIntRep (
 	objPtr->typePtr->freeIntRepProc(objPtr);
     }
 
-    objPtr->internalRep.longValue = signum;
+    SET_SIGNUM(objPtr, sigPtr->signal);
+    SET_SIGPTR(objPtr, sigPtr);
     objPtr->typePtr = &posixSignalObjType;
 }
 

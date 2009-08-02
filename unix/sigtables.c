@@ -81,9 +81,6 @@ static struct {
     Tcl_HashTable byname;
 } tables;
 
-static const Signal* FindSignalBySignum (int signum);
-static const Signal* FindSignalByName (const char *namePtr);
-
 static
 void
 InitLookupTables (void)
@@ -227,7 +224,6 @@ GetSignumByName (
     }
 }
 
-static
 const Signal *
 FindSignalBySignum (
     int signum
@@ -242,7 +238,6 @@ FindSignalBySignum (
     }
 }
 
-static
 const Signal *
 FindSignalByName (
     const char *namePtr

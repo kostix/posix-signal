@@ -44,6 +44,18 @@ GetSignumByName (
     const char *namePtr
     );
 
+MODULE_SCOPE
+const Signal *
+FindSignalBySignum (
+    int signum
+    );
+
+MODULE_SCOPE
+const Signal *
+FindSignalByName (
+    const char *namePtr
+    );
+
 #define __POSIX_SIGNAL_SIGTABLES_H
 #endif /* __POSIX_SIGNAL_SIGTABLES_H */
 
