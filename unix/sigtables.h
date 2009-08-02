@@ -3,6 +3,7 @@
 typedef struct {
     int signal;
     char *name;
+    int length;
 } Signal;
 
 typedef struct {

@@ -4,7 +4,7 @@
 #include "sigobj.h"
 #include "sigtables.h"
 
-#define SIGDECL(SIG) { SIG, #SIG }
+#define SIGDECL(SIG) { SIG, #SIG, (sizeof(#SIG) - 1) }
 
 const Signal
 signals[] = {
