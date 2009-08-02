@@ -28,6 +28,8 @@ static Tcl_ObjType posixSignalObjType = {
 static void InitStringRep (Tcl_Obj *objPtr, const char *bytesPtr,
 	int length);
 
+static void ReplaceIntRep (Tcl_Obj *objPtr, int signum);
+
 /* Internal function -- does not validate neither signum,
  * nor namePtr, nor their coherency */
 MODULE_SCOPE
@@ -116,9 +118,7 @@ SetFromAny (
 	namePtr = GetNameBySignum(interp, signum, &len);
 	if (namePtr != NULL) {
 	    objPtr->bytes = NULL;
-	    /* FIXME do we need this? */
-	    objPtr->internalRep.longValue = signum;
-	    objPtr->typePtr = &posixSignalObjType;
+	    ReplaceIntRep(objPtr, signum);
 	    return TCL_OK;
 	} else {
 	    return TCL_ERROR;
@@ -142,8 +142,7 @@ SetFromAny (
 	 * to be a valid signal name,
 	 * so we just update the integer inernal rep
 	 * and patch the object's typePtr */
-	objPtr->internalRep.longValue = signum;
-	objPtr->typePtr = &posixSignalObjType;
+	ReplaceIntRep(objPtr, signum);
 	return TCL_OK;
     } else {
 	return TCL_ERROR;
@@ -161,6 +160,22 @@ InitStringRep (
     objPtr->bytes = ckalloc(length + 1);
     memcpy(objPtr->bytes, bytesPtr, length + 1);
     objPtr->length = length;
+}
+
+static
+void
+ReplaceIntRep (
+    Tcl_Obj *objPtr,
+    int signum
+    )
+{
+    if (objPtr->typePtr != NULL
+	    && objPtr->typePtr->freeIntRepProc != NULL) {
+	objPtr->typePtr->freeIntRepProc(objPtr);
+    }
+
+    objPtr->internalRep.longValue = signum;
+    objPtr->typePtr = &posixSignalObjType;
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
