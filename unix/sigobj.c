@@ -115,7 +115,7 @@ SetFromAny (
     if (res == TCL_OK) {
 	namePtr = GetNameBySignum(interp, signum, &len);
 	if (namePtr != NULL) {
-	    InitStringRep(objPtr, namePtr, len);
+	    objPtr->bytes = NULL;
 	    /* FIXME do we need this? */
 	    objPtr->internalRep.longValue = signum;
 	    objPtr->typePtr = &posixSignalObjType;
