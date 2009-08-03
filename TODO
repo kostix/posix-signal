@@ -1,42 +1,7 @@
-* Signal object's SetFromAny is now able to show
-  three different error messages depending on the
-  path which results in an error reporting:
-  two error messages come from GetSignumFromSignalObj
-  and GetNameFromSignalObj, the third is generated
-  in SetFromAny.
-
-  We should either settle on just one error message
-  (by passing NULL to Get*FromObj) or make those
-  two functions return sensible lists of allowed
-  names and signums, leaving the third error message
-  as is, as it is only generated when it was impossible
-  to interpret the object neither as an integer,
-  nor as a string.
-
-  It might turn out that in the latter case we should
-  just panic, as a Tcl object which has an invalid
-  string rep and no way to regen it seems to be invalid.
-
-* Hash table lookup code in sigtables.c accesses
-  the internals of the referenced Tcl_Objs
-  directly -- devise some private accessor functions
-  (macros?) for this.
-
-* Hash table lookup functions should mimic the behaviour
-  of Tcl_GetIndexFromObj() and return a proper error
-  message which includes all the allowed elements from
-  the respective tables.
-
-* Implement [info exists].
-
-  The first should only attempt to parse an integer,
-  the second should parse "from any".
-
-* Implement changing signal disposition to
-  SIG_DFL and SIG_IGN.
-
-* Think about a robust way to keep signal dispositions
-  and the table of syncpoints in sync.
+* Consider removal of GetSignumByName()
+  and GetNameBySignum() from unix/sigtables.c
+  as the code implementing signal objects
+  now uses FindSignalBy*() functions.
 
 * Provide for listing of POSIX real-time signals
   in the signals[] table.
@@ -48,6 +13,27 @@
   table of signals, or may be move directly to
   storing the "signal objects" instead of just pairs
   of signal name and number.
+
+  Also it's not quite clear is it possible for
+  SIGRTMIN to change at runtime or we're guaranteed
+  that it stays the same over the lifetime of the
+  process.
+
+* Hash table lookup functions should mimic the behaviour
+  of Tcl_GetIndexFromObj() and return a proper error
+  message which includes all the allowed elements from
+  the respective tables.
+
+  NOTE: it might turn out that the generation of such
+  a message should be left out for some other code,
+  and unix/sigtables.c is just to provide
+  GetListOfNames and GetListOfSignums.
+
+* Implement changing signal disposition to
+  SIG_DFL and SIG_IGN.
+
+* Think about a robust way to keep signal dispositions
+  and the table of syncpoints in sync.
 
 * Think about saving the "subverted" signal handler
   (returned by sigaction() with non-empty last arg)
