@@ -116,6 +116,7 @@ SetFromAny (
 {
     int res, signum;
     const Signal *sigPtr;
+    const char *namePtr;
 
     res = Tcl_GetIntFromObj(NULL, objPtr, &signum);
     if (res == TCL_OK) {
@@ -131,17 +132,8 @@ SetFromAny (
 	}
     }
 
-    if (objPtr->bytes == NULL) {
-	if (objPtr->typePtr != NULL
-		&& objPtr->typePtr->updateStringProc != NULL) {
-	    objPtr->typePtr->updateStringProc(objPtr);
-	} else {
-	    Tcl_SetObjResult(interp,
-		    Tcl_NewStringObj("invalid signal", -1));
-	    return TCL_ERROR;
-	}
-    }
-    sigPtr = FindSignalByName(objPtr->bytes);
+    namePtr = Tcl_GetStringFromObj(objPtr, NULL);
+    sigPtr = FindSignalByName(namePtr);
     if (sigPtr != NULL) {
 	/* The existing string rep is now verified
 	 * to be a valid signal name,
