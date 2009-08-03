@@ -89,10 +89,7 @@ GetSignalNameFromObj (
 
     res = Tcl_ConvertToType(interp, objPtr, &posixSignalObjType);
     if (res == TCL_OK) {
-	if (lengthPtr != NULL) {
-	    *lengthPtr = objPtr->length;
-	}
-	return objPtr->bytes;
+	return Tcl_GetStringFromObj(objPtr, lengthPtr);
     } else {
 	return NULL;
     }
