@@ -1,5 +1,6 @@
 #include <tcl.h>
 #include <string.h>
+#include <stdio.h>
 #include <assert.h>
 #include "sigtables.h"
 #include "sigobj.h"
@@ -14,6 +15,8 @@
 	((const Signal *) objPtr->internalRep.ptrAndLongRep.ptr)
 #define SET_SIGPTR(objPtr, sigPtr) \
 	(objPtr->internalRep.ptrAndLongRep.ptr = (void *) (sigPtr))
+
+#define IS_RTSIG(SIG) ((SIG) == NULL)
 
 /*
 typedef struct Tcl_ObjType {
@@ -39,7 +42,8 @@ static Tcl_ObjType posixSignalObjType = {
 static void InitStringRep (Tcl_Obj *objPtr, const char *bytesPtr,
 	int length);
 
-static void ReplaceIntRep (Tcl_Obj *objPtr, const Signal *sigPtr);
+static void ReplaceIntRep (Tcl_Obj *objPtr, int signum,
+			   const Signal *sigPtr);
 
 MODULE_SCOPE
 Tcl_Obj *
@@ -104,7 +108,14 @@ UpdateString (
     const Signal *sigPtr;
 
     sigPtr = GET_SIGPTR(objPtr);
-    InitStringRep(objPtr, sigPtr->name, sigPtr->length);
+    if (!IS_RTSIG(sigPtr)) {
+	InitStringRep(objPtr, sigPtr->name, sigPtr->length);
+    } else {
+	char buf[TCL_INTEGER_SPACE];
+	int len;
+	len = sprintf(buf, "%d", GET_SIGNUM(objPtr));
+	InitStringRep(objPtr, buf, len);
+    }
 }
 
 static
@@ -123,12 +134,18 @@ SetFromAny (
 	sigPtr = FindSignalBySignum(signum);
 	if (sigPtr != NULL) {
 	    objPtr->bytes = NULL;
-	    ReplaceIntRep(objPtr, sigPtr);
+	    ReplaceIntRep(objPtr, signum, sigPtr);
 	    return TCL_OK;
 	} else {
-	    Tcl_SetObjResult(interp,
-		    Tcl_NewStringObj("invalid signal", -1));
-	    return TCL_ERROR;
+	    if (IsRealTimeSignal(signum)) {
+		objPtr->bytes = NULL;
+		ReplaceIntRep(objPtr, signum, NULL);
+		return TCL_OK;
+	    } else {
+		Tcl_SetObjResult(interp,
+			Tcl_NewStringObj("invalid signal", -1));
+		return TCL_ERROR;
+	    }
 	}
     }
 
@@ -139,7 +156,7 @@ SetFromAny (
 	 * to be a valid signal name,
 	 * so we just update the integer inernal rep
 	 * and patch the object's typePtr */
-	ReplaceIntRep(objPtr, sigPtr);
+	ReplaceIntRep(objPtr, sigPtr->signal, sigPtr);
 	return TCL_OK;
     } else {
 	Tcl_SetObjResult(interp,
@@ -165,6 +182,7 @@ static
 void
 ReplaceIntRep (
     Tcl_Obj *objPtr,
+    int signum,
     const Signal *sigPtr
     )
 {
@@ -173,7 +191,7 @@ ReplaceIntRep (
 	objPtr->typePtr->freeIntRepProc(objPtr);
     }
 
-    SET_SIGNUM(objPtr, sigPtr->signal);
+    SET_SIGNUM(objPtr, signum);
     SET_SIGPTR(objPtr, sigPtr);
     objPtr->typePtr = &posixSignalObjType;
 }

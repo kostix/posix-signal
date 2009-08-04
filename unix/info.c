@@ -153,7 +153,15 @@ TopicCmd_Name (
 
     res = Tcl_GetIntFromObj(interp, objv[3], &signum);
     if (res == TCL_OK) {
-	namePtr = GetNameBySignum(interp, signum, &len);
+	namePtr = GetNameBySignum(NULL, signum, &len);
+	if (namePtr == NULL) {
+	    if (IsRealTimeSignal(signum)) {
+		namePtr = Tcl_GetStringFromObj(objv[3], &len);
+	    } else {
+		Tcl_SetObjResult(interp,
+			Tcl_NewStringObj("invalid signum", -1));
+	    }
+	}
     } else {
 	namePtr = NULL;
     }
@@ -177,7 +185,7 @@ TopicCmd_Signum (
     )
 {
     const char *namePtr;
-    int signum;
+    int signum, res;
 
     if (objc != 4) {
 	Tcl_WrongNumArgs(interp, 3, objv, "name");
@@ -185,11 +193,20 @@ TopicCmd_Signum (
     }
 
     namePtr = Tcl_GetStringFromObj(objv[3], NULL);
-    signum  = GetSignumByName(interp, namePtr);
+    signum  = GetSignumByName(NULL, namePtr);
+    if (signum == -1) {
+	res = Tcl_GetIntFromObj(NULL, objv[3], &signum);
+	if (res != TCL_OK || !IsRealTimeSignal(signum)) {
+	    signum = -1;
+	}
+    }
+
     if (signum != -1) {
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(signum));
 	return TCL_OK;
     } else {
+	Tcl_SetObjResult(interp,
+		Tcl_NewStringObj("invalid signal name", -1));
 	return TCL_ERROR;
     }
 }

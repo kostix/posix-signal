@@ -56,6 +56,12 @@ FindSignalByName (
     const char *namePtr
     );
 
+MODULE_SCOPE
+int
+IsRealTimeSignal (
+    int signum
+    );
+
 #define __POSIX_SIGNAL_SIGTABLES_H
 #endif /* __POSIX_SIGNAL_SIGTABLES_H */
 

@@ -253,4 +253,12 @@ FindSignalByName (
     }
 }
 
+int
+IsRealTimeSignal (
+    int signum
+    )
+{
+    return SIGRTMIN <= signum && signum <= SIGRTMAX;
+}
+
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */

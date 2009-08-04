@@ -1,27 +1,27 @@
-* Think about modifying the code
-  which updates the stringrep of signal objects
-  so that it detects POSIX real-time signals
-  (using > max_signum may be?) and generates
-  the stringrep using sprintf("%d")
-  as these signals do not have special names
-  which can be sensibly used by the users
- 
-  IOW, while it might appear to be sensible to do
-    % set n [posix::signal info sigrtmin 1]
-    33
-    % set s [posix::signal name $n]
-    SIG33
-  , the other way around has little sense
-  as SIGRTMIN is not obliged to resolve to 32
-  when the user does something like
-  % posix::signal trap SIG33 {puts SIGRTMIN+1}
+* Implement proper handling of RT signals
+  in other parts of the code, namely,
+  in trap tables and the table of
+  syncpoints.
 
-  Therefore,
-    % set n [posix::signal info sigrtmin 1]
-    33
-    % set s [posix::signal name $n]
-    33
-  looks more logical.
+  Possibly, a sorted list could work.
+
+  On the other hand, the vector of all supported
+  RT signals is continuous and monotonic, of at least
+  8 signals, so we can assume a sane system
+  will not support hundreds of RT signals
+  (Linux supports 32), and manage lookups of
+  RT signals in the same way we manage lookups
+  for standard signals, but with floating start/end
+  signums.
+
+* Try to simplify the implementation of
+  InfoCmd_Signum and InfoCmd_Name.
+
+* Looks there's no more code that calls
+  GetSignumByName and GetNameBySignum
+  with interp != NULL.
+  If so, their implementation should possibly
+  be updated.
 
 * Consider removal of GetSignumByName()
   and GetNameBySignum() from unix/sigtables.c
