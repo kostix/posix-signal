@@ -7,6 +7,76 @@
 
 static
 int
+GetSIGRTMIN (void)
+{
+    return SIGRTMIN;
+}
+
+static
+int
+GetSIGRTMAX (void)
+{
+    return SIGRTMAX;
+}
+
+
+static
+int
+CalcRTSignal (
+    int base,
+    int offset
+    )
+{
+    int signum = base + offset;
+
+    if (SIGRTMIN <= signum && signum <= SIGRTMAX) {
+	return signum;
+    } else {
+	return -1;
+    }
+}
+
+
+static
+int
+Info_RTSignal (
+    ClientData clientData,
+    Tcl_Interp *interp,
+    int objc,
+    Tcl_Obj *const objv[],
+    int (*getRTSigProc) (void)
+    )
+{
+    int res, offset, signum;
+
+    switch (objc) {
+	case 3:
+	    Tcl_SetObjResult(interp, Tcl_NewIntObj(getRTSigProc()));
+	    return TCL_OK;
+	case 4:
+	    res = Tcl_GetIntFromObj(interp, objv[3], &offset);
+	    if (res != TCL_OK) {
+		return TCL_ERROR;
+	    }
+	    signum = CalcRTSignal(getRTSigProc(), offset);
+	    if (signum != -1) {
+		Tcl_SetObjResult(interp, Tcl_NewIntObj(signum));
+		return TCL_OK;
+	    } else {
+		Tcl_SetObjResult(interp,
+			Tcl_NewStringObj("invalid signum", -1));
+		return TCL_ERROR;
+	    }
+	default:
+	    Tcl_WrongNumArgs(interp, 3, objv, NULL);
+	    return TCL_ERROR;
+    }
+
+}
+
+
+static
+int
 TopicCmd_Sigrtmin (
     ClientData clientData,
     Tcl_Interp *interp,
@@ -14,13 +84,7 @@ TopicCmd_Sigrtmin (
     Tcl_Obj *const objv[]
     )
 {
-    if (objc != 3) {
-	Tcl_WrongNumArgs(interp, 3, objv, NULL);
-	return TCL_ERROR;
-    }
-
-    Tcl_SetObjResult(interp, Tcl_NewIntObj(SIGRTMIN));
-    return TCL_OK;
+    return Info_RTSignal(clientData, interp, objc, objv, GetSIGRTMIN);
 }
 
 
@@ -33,13 +97,7 @@ TopicCmd_Sigrtmax (
     Tcl_Obj *const objv[]
     )
 {
-    if (objc != 3) {
-	Tcl_WrongNumArgs(interp, 3, objv, NULL);
-	return TCL_ERROR;
-    }
-
-    Tcl_SetObjResult(interp, Tcl_NewIntObj(SIGRTMAX));
-    return TCL_OK;
+    return Info_RTSignal(clientData, interp, objc, objv, GetSIGRTMAX);
 }
 
 
