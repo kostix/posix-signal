@@ -1,3 +1,28 @@
+* Think about modifying the code
+  which updates the stringrep of signal objects
+  so that it detects POSIX real-time signals
+  (using > max_signum may be?) and generates
+  the stringrep using sprintf("%d")
+  as these signals do not have special names
+  which can be sensibly used by the users
+ 
+  IOW, while it might appear to be sensible to do
+    % set n [posix::signal info sigrtmin 1]
+    33
+    % set s [posix::signal name $n]
+    SIG33
+  , the other way around has little sense
+  as SIGRTMIN is not obliged to resolve to 32
+  when the user does something like
+  % posix::signal trap SIG33 {puts SIGRTMIN+1}
+
+  Therefore,
+    % set n [posix::signal info sigrtmin 1]
+    33
+    % set s [posix::signal name $n]
+    33
+  looks more logical.
+
 * Consider removal of GetSignumByName()
   and GetNameBySignum() from unix/sigtables.c
   as the code implementing signal objects
