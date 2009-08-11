@@ -4,6 +4,8 @@
 #include "events.h"
 #include <stdio.h>
 
+#define WORDKEY(KEY) ((char *) (KEY))
+
 typedef struct {
     Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
@@ -12,7 +14,10 @@ typedef struct {
 typedef struct {
     int initialized;
     int len;
-    PS_SignalHandler *items[];
+    struct {
+	Tcl_HashTable rt;
+	PS_SignalHandler *std[];
+    } items;
 } PS_SignalHandlers;
 
 static Tcl_ThreadDataKey handlersKey;
@@ -26,7 +31,7 @@ AllocHandlers (void)
 
     len = max_signum;
     nbytes = sizeof(*handlersPtr)
-	    + sizeof(handlersPtr->items[0]) * len;
+	    + sizeof(handlersPtr->items.std[0]) * len;
 
     handlersPtr = Tcl_GetThreadData(&handlersKey, nbytes);
     handlersPtr->len = len;
@@ -83,14 +88,23 @@ HandleSignalEvent (
     PS_SignalHandler *handlerPtr;
     Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
-    int code;
+    int signum, code;
 
     sigEvPtr = (SignalEvent*) evPtr;
     printf("Rcvd %d in %x\n",
 	    sigEvPtr->signum, sigEvPtr->threadId);
 
+    signum = sigEvPtr->signum;
     handlersPtr = GetHandlers();
-    handlerPtr = handlersPtr->items[SIGOFFSET(sigEvPtr->signum)];
+    if (signum <= max_signum) {
+	/* Standard signal */
+	handlerPtr = handlersPtr->items.std[SIGOFFSET(signum)];
+    } else {
+	/* Real-time signal */
+	Tcl_HashEntry *entryPtr;
+	entryPtr = Tcl_FindHashEntry(&handlersPtr->items.rt, WORDKEY(signum));
+	handlerPtr = Tcl_GetHashValue(entryPtr);
+    }
 
     interp = handlerPtr->interp;
     cmdObj = handlerPtr->cmdObj;
@@ -130,9 +144,21 @@ FreeEventHandlers (
 
     len = handlersPtr->len;
     for (i = 0; i < len; ++i) {
-	handlerPtr = handlersPtr->items[i];
+	handlerPtr = handlersPtr->items.std[i];
 	if (handlerPtr != NULL) {
 	    FreeSignalHandler(handlerPtr);
+	}
+    }
+
+    {
+	Tcl_HashEntry *entryPtr;
+	Tcl_HashSearch iterator;
+
+	entryPtr = Tcl_FirstHashEntry(&handlersPtr->items.rt, &iterator);
+	while (entryPtr != NULL) {
+	    handlerPtr = Tcl_GetHashValue(entryPtr);
+	    FreeSignalHandler(handlerPtr);
+	    entryPtr = Tcl_NextHashEntry(&iterator);
 	}
     }
 }
@@ -149,14 +175,16 @@ InitEventHandlers (void)
     if (handlersPtr->initialized) return;
 
     for (i = 0; i < handlersPtr->len; ++i) {
-	handlersPtr->items[i] = NULL;
+	handlersPtr->items.std[i] = NULL;
     }
 
     /* Create handlers for known signals */
     for (i = 0; i < nsigs; ++i) {
 	int index = SIGOFFSET(signals[i].signal);
-	handlersPtr->items[index] = CreateSignalHandler();
+	handlersPtr->items.std[index] = CreateSignalHandler();
     }
+
+    Tcl_InitHashTable(&handlersPtr->items.rt, TCL_ONE_WORD_KEYS);
 
     handlersPtr->initialized = 1;
 
@@ -234,7 +262,22 @@ SetEventHandler (
     PS_SignalHandler *handlerPtr;
 
     handlersPtr = GetHandlers();
-    handlerPtr = handlersPtr->items[SIGOFFSET(signum)];
+    if (signum <= max_signum) {
+	/* Standard signal */
+	handlerPtr = handlersPtr->items.std[SIGOFFSET(signum)];
+    } else {
+	/* Real-time signal */
+	Tcl_HashEntry *entryPtr;
+	int isnew;
+	entryPtr = Tcl_CreateHashEntry(&handlersPtr->items.rt,
+		WORDKEY(signum), &isnew);
+	if (isnew) {
+	    handlerPtr = CreateSignalHandler();
+	    Tcl_SetHashValue(entryPtr, handlerPtr);
+	} else {
+	    handlerPtr = Tcl_GetHashValue(entryPtr);
+	}
+    }
 
     handlerPtr->interp = interp;
 
@@ -255,7 +298,19 @@ GetEventHandlerCommand (
     PS_SignalHandler *handlerPtr;
 
     handlersPtr = GetHandlers();
-    handlerPtr = handlersPtr->items[SIGOFFSET(signum)];
+    if (signum <= max_signum) {
+	/* Standard signal */
+	handlerPtr = handlersPtr->items.std[SIGOFFSET(signum)];
+    } else {
+	/* Real-time signal */
+	Tcl_HashEntry *entryPtr;
+	entryPtr = Tcl_FindHashEntry(&handlersPtr->items.rt, WORDKEY(signum));
+	if (entryPtr != NULL) {
+	    handlerPtr = Tcl_GetHashValue(entryPtr);
+	} else {
+	    handlerPtr = NULL;
+	}
+    }
 
     if (handlerPtr == NULL) {
 	return NULL;
