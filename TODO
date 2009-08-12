@@ -1,18 +1,7 @@
-* Implement proper handling of RT signals
-  in other parts of the code, namely,
-  in trap tables and the table of
-  syncpoints.
-
-  Possibly, a sorted list could work.
-
-  On the other hand, the vector of all supported
-  RT signals is continuous and monotonic, of at least
-  8 signals, so we can assume a sane system
-  will not support hundreds of RT signals
-  (Linux supports 32), and manage lookups of
-  RT signals in the same way we manage lookups
-  for standard signals, but with floating start/end
-  signums.
+* Investigate possibility to improve implementation
+  of signal tables.
+  Factoring out their handling to a common
+  data structure looks interesting.
 
 * Try to simplify the implementation of
   InfoCmd_Signum and InfoCmd_Name.
