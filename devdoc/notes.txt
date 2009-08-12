@@ -1,3 +1,50 @@
+*** Managing signal tables ***
+
+  The problem is that POSIX signals are divided into
+  the two groups with different properties:
+
+  * Standard ("classic") signals.
+    - Older signals have fixed numbers.
+    - Newer signals have platform-dependent numbers.
+    - The minimal signum is always 1.
+    - The signums in this group seems to be rather
+      tightly packed.
+    - The total number of signals, minimal and maximal
+      signums are always known (at compile time).
+    Therefore, this group seems to map well onto
+    a "list with gaps" concept.
+
+  * Real-time ("new") signals.
+    - Minimal and maximal signums are known
+      only at run time (and can even change anytime
+      as per the specification).
+    - At least 8 signals are available (less in real
+      life cases -- taken by libpthreads etc).
+    - Maximum number of RT signals is not specified,
+      so in theory some funky system could support
+      several hundreds of them.
+    - Within the min and max signums, the signals
+      are allocated tightly, i.e. without any gaps.
+
+    As the number of supported RT signals can
+    *in theory* be quite large, blindly allocating
+    a table for all of them might be undesirable.
+
+    A sorted list + binary search or a hash table
+    could be solutions to this.
+    binsearch is possibly optimal for a small number
+    of handled signals, while hashtable is optimal
+    for a large number.
+
+  On the other hand, the vector of all supported
+  RT signals is continuous and monotonic, of at least
+  8 signals, so we can assume a sane system
+  will not support hundreds of RT signals
+  (Linux supports 32), and manage lookups of
+  RT signals in the same way we manage lookups
+  for standard signals, but with floating start/end
+  signums.
+
 *** Locking problems ***
 
 * Rationale for "chaining of syncpoints":
