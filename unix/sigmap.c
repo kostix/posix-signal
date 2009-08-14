@@ -4,10 +4,6 @@
 
 #define WORDKEY(KEY) ((char *) (KEY))
 
-typedef Tcl_HashTable SignalMap;
-
-typedef Tcl_HashSearch SignalMapSearch;
-
 void
 InitSignalMap (
     SignalMap *sigmapPtr)
