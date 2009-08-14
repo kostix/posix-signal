@@ -40,14 +40,13 @@ CreateSigMapEntry (
     ClientData clientData)
 {
     Tcl_HashEntry *entryPtr;
-    int isnew, ok;
+    int isnew;
 
     entryPtr = Tcl_CreateHashEntry(sigmapPtr, WORDKEY(signum), &isnew);
-    ok = !isnew;
-    if (ok) {
+    if (isnew) {
 	Tcl_SetHashValue(entryPtr, clientData);
     }
-    return ok;
+    return isnew;
 }
 
 ClientData
