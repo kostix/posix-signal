@@ -1,5 +1,7 @@
 #include <tcl.h>
+#include <assert.h>
 #include "sigtables.h"
+#include "sigmap.h"
 #include "syncpoints.h"
 #include "events.h"
 #include <stdio.h>
@@ -21,12 +23,7 @@ typedef struct {
     SignalEvent *tailPtr;
 } SignalEventList;
 
-typedef struct {
-    SyncPoint **std;
-    Tcl_HashTable rt;
-} SyncPointTables;
-
-static SyncPointTables sptables;
+static SignalMap syncpoints;
 TCL_DECLARE_MUTEX(spointsLock);
 
 #ifdef TCL_THREADS
@@ -144,6 +141,8 @@ ManagerThreadProc (
     while (1) {
 	int signum;
 	SignalEventList eventList;
+	SignalMapSearch iterator;
+	SyncPoint *spointPtr;
 
 	Tcl_MutexLock(&spointsLock);
 
@@ -154,25 +153,11 @@ ManagerThreadProc (
 
 	EmptyEventList(&eventList);
 
-	/* TODO keep the length of the syncpoints table
-	 * in a variable and use it here */
-	for (signum = 1; signum <= max_signum; ++signum) {
-	    int index = SIGOFFSET(signum);
-	    HarvestSyncpoint(signum, sptables.std[index], &eventList);
-	}
-	{
-	    Tcl_HashEntry *entryPtr;
-	    Tcl_HashSearch iterator;
-
-	    entryPtr = Tcl_FirstHashEntry(&sptables.rt, &iterator);
-	    while (entryPtr != NULL) {
-		SyncPoint *spointPtr;
-
-		signum    = (int) Tcl_GetHashKey(&sptables.rt, entryPtr);
-		spointPtr = Tcl_GetHashValue(entryPtr);
-		HarvestSyncpoint(signum, spointPtr, &eventList);
-		entryPtr = Tcl_NextHashEntry(&iterator);
-	    }
+	spointPtr = FirstSigMapEntry(&syncpoints, &iterator);
+	while (spointPtr != NULL) {
+	    signum = 0; // TODO get real signum
+	    HarvestSyncpoint(signum, spointPtr, &eventList);
+	    spointPtr = NextSigMapEntry(&iterator);
 	}
 
 	Tcl_MutexUnlock(&spointsLock);
@@ -223,16 +208,7 @@ MODULE_SCOPE
 void
 InitSyncPoints (void)
 {
-    int i, len;
-
-    len = max_signum;
-    sptables.std = (SyncPoint**) ckalloc(sizeof(SyncPoint*) * len);
-
-    for (i = 0; i < len; ++i) {
-	sptables.std[i] = NULL;
-    }
-
-    Tcl_InitHashTable(&sptables.rt, TCL_ONE_WORD_KEYS);
+    InitSignalMap(&syncpoints);
 
 #ifdef TCL_THREADS
     {
@@ -250,63 +226,6 @@ InitSyncPoints (void)
 #endif /* TCL_THREADS */
 }
 
-static
-void
-SetStdSigSyncPoint (
-    int signum
-    )
-{
-    SyncPoint *spointPtr;
-
-    const int index = SIGOFFSET(signum);
-
-    spointPtr = sptables.std[index];
-    if (spointPtr == NULL) {
-	sptables.std[index] = CreateSyncPoint();
-    } else {
-	int signaled = spointPtr->signaled;
-	if (signaled) {
-	    SyncPoint *oldPtr = spointPtr;
-	    spointPtr = CreateSyncPoint();
-	    spointPtr->nextPtr = oldPtr;
-	    sptables.std[index] = spointPtr;
-	} else {
-	    spointPtr->threadId = Tcl_GetCurrentThread();
-	    spointPtr->signaled = 0;
-	}
-    }
-}
-
-static
-void
-SetRTSigSyncPoint (
-    int signum
-    )
-{
-    Tcl_HashEntry *entryPtr;
-    int isnew;
-
-    entryPtr = Tcl_CreateHashEntry(&sptables.rt, WORDKEY(signum), &isnew);
-    if (isnew) {
-	Tcl_SetHashValue(entryPtr, CreateSyncPoint());
-    } else {
-	SyncPoint *spointPtr;
-	int signaled;
-
-	spointPtr = Tcl_GetHashValue(entryPtr);
-	signaled  = spointPtr->signaled;
-	if (signaled) {
-	    SyncPoint *oldPtr = spointPtr;
-	    spointPtr = CreateSyncPoint();
-	    spointPtr->nextPtr = oldPtr;
-	    Tcl_SetHashValue(entryPtr, spointPtr);
-	} else {
-	    spointPtr->threadId = Tcl_GetCurrentThread();
-	    spointPtr->signaled = 0;
-	}
-    }
-}
-
 /* TODO essentially, creation of syncpoint includes
  * "resetting" it to current values.
  * Looks like we should create one special procedure
@@ -318,13 +237,10 @@ SetSyncPoint (
     int signum
     )
 {
-    if (signum <= max_signum) {
-	/* Standard signal */
-	SetStdSigSyncPoint(signum);
-    } else {
-	/* Real-time signal */
-	SetRTSigSyncPoint(signum);
-    }
+    int isnew;
+
+    isnew = CreateSigMapEntry(&syncpoints, signum, CreateSyncPoint());
+    assert(isnew);
 }
 
 /* TODO possibly we should panic if spointPtr == NULL
@@ -344,19 +260,7 @@ SignalSyncPoint (
 {
     SyncPoint *spointPtr;
 
-    if (signum <= max_signum) {
-	/* Standard signal */
-	spointPtr = sptables.std[SIGOFFSET(signum)];
-    } else {
-	/* Real-time signal */
-	Tcl_HashEntry *entryPtr;
-	entryPtr = Tcl_FindHashEntry(&sptables.rt, WORDKEY(signum));
-	if (entryPtr != NULL) {
-	    spointPtr = Tcl_GetHashValue(entryPtr);
-	} else {
-	    spointPtr = NULL;
-	}
-    }
+    spointPtr = GetSigMapEntry(&syncpoints, signum);
 
     if (spointPtr != NULL) {
 	++spointPtr->signaled;
