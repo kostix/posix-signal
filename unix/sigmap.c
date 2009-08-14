@@ -10,16 +10,14 @@ typedef Tcl_HashSearch SignalMapSearch;
 
 void
 InitSignalMap (
-    SignalMap *sigmapPtr
-    )
+    SignalMap *sigmapPtr)
 {
     Tcl_InitHashTable(sigmapPtr, TCL_ONE_WORD_KEYS);
 }
 
 void
 FreeSignalMap (
-    SignalMap *sigmapPtr
-    )
+    SignalMap *sigmapPtr)
 {
     Tcl_DeleteHashTable(sigmapPtr);
 }
@@ -27,8 +25,7 @@ FreeSignalMap (
 ClientData
 GetSigMapEntry (
     SignalMap *sigmapPtr,
-    int signum
-    )
+    int signum)
 {
     Tcl_HashEntry *entryPtr;
 
@@ -44,8 +41,7 @@ int
 CreateSigMapEntry (
     SignalMap *sigmapPtr,
     int signum,
-    ClientData clientData
-    )
+    ClientData clientData)
 {
     Tcl_HashEntry *entryPtr;
     int isnew, ok;
@@ -61,8 +57,7 @@ CreateSigMapEntry (
 ClientData
 DeleteSigMapEntry (
     SignalMap *sigmapPtr,
-    int signum
-    )
+    int signum)
 {
     Tcl_HashEntry *entryPtr;
 
@@ -81,16 +76,14 @@ DeleteSigMapEntry (
 ClientData
 FirstSigMapEntry (
     SignalMap *sigmapPtr,
-    SignalMapSearch *searchPtr
-    )
+    SignalMapSearch *searchPtr)
 {
     return Tcl_FirstHashEntry(sigmapPtr, searchPtr);
 }
 
 ClientData
 NextSigMapEntry (
-    SignalMapSearch *searchPtr
-    )
+    SignalMapSearch *searchPtr)
 {
     return Tcl_NextHashEntry(searchPtr);
 }
