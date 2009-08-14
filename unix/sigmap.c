@@ -1,38 +1,38 @@
 #include <tcl.h>
 #include "sigtables.h"
-#include "sigcont.h"
+#include "sigmap.h"
 
 #define WORDKEY(KEY) ((char *) (KEY))
 
-typedef Tcl_HashTable SigContainer;
+typedef Tcl_HashTable SignalMap;
 
-typedef Tcl_HashSearch SigContSearch;
+typedef Tcl_HashSearch SignalMapSearch;
 
 void
-InitSignalContainer (
-    SigContainer *sigcontPtr
+InitSignalMap (
+    SignalMap *sigmapPtr
     )
 {
-    Tcl_InitHashTable(sigcontPtr, TCL_ONE_WORD_KEYS);
+    Tcl_InitHashTable(sigmapPtr, TCL_ONE_WORD_KEYS);
 }
 
 void
-FreeSignalContainer (
-    SigContainer *sigcontPtr
+FreeSignalMap (
+    SignalMap *sigmapPtr
     )
 {
-    Tcl_DeleteHashTable(sigcontPtr);
+    Tcl_DeleteHashTable(sigmapPtr);
 }
 
 ClientData
-GetSigContEntry (
-    SigContainer *sigcontPtr,
+GetSigMapEntry (
+    SignalMap *sigmapPtr,
     int signum
     )
 {
     Tcl_HashEntry *entryPtr;
 
-    entryPtr = Tcl_FindHashEntry(sigcontPtr, WORDKEY(signum));
+    entryPtr = Tcl_FindHashEntry(sigmapPtr, WORDKEY(signum));
     if (entryPtr != NULL) {
 	return Tcl_GetHashValue(entryPtr);
     } else {
@@ -41,8 +41,8 @@ GetSigContEntry (
 }
 
 int
-CreateSigContEntry (
-    SigContainer *sigcontPtr,
+CreateSigMapEntry (
+    SignalMap *sigmapPtr,
     int signum,
     ClientData clientData
     )
@@ -50,7 +50,7 @@ CreateSigContEntry (
     Tcl_HashEntry *entryPtr;
     int isnew, ok;
 
-    entryPtr = Tcl_CreateHashEntry(sigcontPtr, WORDKEY(signum), &isnew);
+    entryPtr = Tcl_CreateHashEntry(sigmapPtr, WORDKEY(signum), &isnew);
     ok = !isnew;
     if (ok) {
 	Tcl_SetHashValue(entryPtr, clientData);
@@ -59,14 +59,14 @@ CreateSigContEntry (
 }
 
 ClientData
-DeleteSigContEntry (
-    SigContainer *sigcontPtr,
+DeleteSigMapEntry (
+    SignalMap *sigmapPtr,
     int signum
     )
 {
     Tcl_HashEntry *entryPtr;
 
-    entryPtr = Tcl_FindHashEntry(sigcontPtr, WORDKEY(signum));
+    entryPtr = Tcl_FindHashEntry(sigmapPtr, WORDKEY(signum));
     if (entryPtr != NULL) {
 	ClientData clientData;
 
@@ -79,17 +79,17 @@ DeleteSigContEntry (
 }
 
 ClientData
-FirstSigContEntry (
-    SigContainer *sigcontPtr,
-    SigContSearch *searchPtr
+FirstSigMapEntry (
+    SignalMap *sigmapPtr,
+    SignalMapSearch *searchPtr
     )
 {
-    return Tcl_FirstHashEntry(sigcontPtr, searchPtr);
+    return Tcl_FirstHashEntry(sigmapPtr, searchPtr);
 }
 
 ClientData
-NextSigContEntry (
-    SigContSearch *searchPtr
+NextSigMapEntry (
+    SignalMapSearch *searchPtr
     )
 {
     return Tcl_NextHashEntry(searchPtr);
