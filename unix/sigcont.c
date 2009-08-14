@@ -9,7 +9,7 @@ typedef Tcl_HashTable SigContainer;
 typedef Tcl_HashSearch SigContSearch;
 
 void
-SigCont_Init (
+InitSignalContainer (
     SigContainer *sigcontPtr
     )
 {
@@ -17,7 +17,7 @@ SigCont_Init (
 }
 
 void
-SigCont_Free (
+FreeSignalContainer (
     SigContainer *sigcontPtr
     )
 {
@@ -25,7 +25,7 @@ SigCont_Free (
 }
 
 ClientData
-SigCont_GetEntry (
+GetSigContEntry (
     SigContainer *sigcontPtr,
     int signum
     )
@@ -41,7 +41,7 @@ SigCont_GetEntry (
 }
 
 int
-SigCont_CreateEntry (
+CreateSigContEntry (
     SigContainer *sigcontPtr,
     int signum,
     ClientData clientData
@@ -59,7 +59,7 @@ SigCont_CreateEntry (
 }
 
 ClientData
-SigCont_DeleteEntry (
+DeleteSigContEntry (
     SigContainer *sigcontPtr,
     int signum
     )
@@ -79,7 +79,7 @@ SigCont_DeleteEntry (
 }
 
 ClientData
-SigCont_FirstEntry (
+FirstSigContEntry (
     SigContainer *sigcontPtr,
     SigContSearch *searchPtr
     )
@@ -88,7 +88,7 @@ SigCont_FirstEntry (
 }
 
 ClientData
-SigCont_NextEntry (
+NextSigContEntry (
     SigContSearch *searchPtr
     )
 {
