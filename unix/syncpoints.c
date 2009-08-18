@@ -12,6 +12,7 @@ struct SyncPoint {
 #ifdef TCL_THREADS
     Tcl_ThreadId threadId;
 #endif
+    int signum;
     int signaled;
     struct SyncPoint *nextPtr;
 };
@@ -35,7 +36,8 @@ static Tcl_AsyncHandle activator;
 
 static
 SyncPoint*
-CreateSyncPoint (void)
+CreateSyncPoint (
+    int signum)
 {
     SyncPoint *spointPtr;
 
@@ -44,6 +46,7 @@ CreateSyncPoint (void)
 #ifdef TCL_THREADS
     spointPtr->threadId = Tcl_GetCurrentThread();
 #endif
+    spointPtr->signum   = signum;
     spointPtr->signaled = 0;
     spointPtr->nextPtr  = NULL;
 
@@ -139,7 +142,6 @@ ManagerThreadProc (
     /* TODO block all signals */
 
     while (1) {
-	int signum;
 	SignalEventList eventList;
 	SignalMapSearch iterator;
 	SyncPoint *spointPtr;
@@ -155,8 +157,8 @@ ManagerThreadProc (
 
 	spointPtr = FirstSigMapEntry(&syncpoints, &iterator);
 	while (spointPtr != NULL) {
-	    signum = 0; // TODO get real signum
-	    HarvestSyncpoint(signum, spointPtr, &eventList);
+	    // TODO signum can be extracted by HarvestSyncpoint
+	    HarvestSyncpoint(spointPtr->signum, spointPtr, &eventList);
 	    spointPtr = NextSigMapEntry(&iterator);
 	}
 
@@ -244,14 +246,14 @@ SetSyncPoint (
     entryPtr = CreateSigMapEntry(&syncpoints, signum, &isnew);
     spointPtr = GetSigMapValue(entryPtr);
     if (spointPtr == NULL) {
-	spointPtr = CreateSyncPoint();
+	spointPtr = CreateSyncPoint(signum);
 	SetSigMapValue(entryPtr, spointPtr);
     } else {
 	if (spointPtr->signaled == 0) {
 	    spointPtr->threadId = Tcl_GetCurrentThread();
 	} else {
 	    SyncPoint *nextPtr = spointPtr;
-	    spointPtr = CreateSyncPoint();
+	    spointPtr = CreateSyncPoint(signum);
 	    spointPtr->nextPtr = nextPtr;
 	    SetSigMapValue(entryPtr, spointPtr);
 	}
