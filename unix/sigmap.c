@@ -33,20 +33,28 @@ GetSigMapEntry (
     }
 }
 
-int
+SignalMapEntry *
 CreateSigMapEntry (
     SignalMap *sigmapPtr,
     int signum,
+    int *isnewPtr)
+{
+    return Tcl_CreateHashEntry(sigmapPtr, WORDKEY(signum), isnewPtr);
+}
+
+ClientData
+GetSigMapValue (
+    SignalMapEntry *entryPtr)
+{
+    return Tcl_GetHashValue(entryPtr);
+}
+
+void
+SetSigMapValue (
+    SignalMapEntry *entryPtr,
     ClientData clientData)
 {
-    Tcl_HashEntry *entryPtr;
-    int isnew;
-
-    entryPtr = Tcl_CreateHashEntry(sigmapPtr, WORDKEY(signum), &isnew);
-    if (isnew) {
-	Tcl_SetHashValue(entryPtr, clientData);
-    }
-    return isnew;
+    Tcl_SetHashValue(entryPtr, clientData);
 }
 
 ClientData

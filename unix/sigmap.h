@@ -2,6 +2,8 @@
 
 typedef Tcl_HashTable SignalMap;
 
+typedef Tcl_HashEntry SignalMapEntry;
+
 typedef Tcl_HashSearch SignalMapSearch;
 
 MODULE_SCOPE
@@ -21,10 +23,21 @@ GetSigMapEntry (
     int signum);
 
 MODULE_SCOPE
-int
+SignalMapEntry *
 CreateSigMapEntry (
     SignalMap *sigmapPtr,
     int signum,
+    int *isnewPtr);
+
+MODULE_SCOPE
+ClientData
+GetSigMapValue (
+    SignalMapEntry *entryPtr);
+
+MODULE_SCOPE
+void
+SetSigMapValue (
+    SignalMapEntry *entryPtr,
     ClientData clientData);
 
 MODULE_SCOPE
