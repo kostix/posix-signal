@@ -104,7 +104,6 @@ AddEventToList (
 static
 void
 HarvestSyncpoint (
-    int signum,
     SyncPoint *spointPtr,
     SignalEventList *evListPtr
     )
@@ -117,7 +116,8 @@ HarvestSyncpoint (
 	if (signaled) {
 	    do {
 		AddEventToList(evListPtr,
-			CreateSignalEvent(spointPtr->threadId, signum));
+			CreateSignalEvent(spointPtr->threadId,
+				spointPtr->signum));
 
 		--signaled;
 	    } while (signaled > 0);
@@ -157,8 +157,7 @@ ManagerThreadProc (
 
 	spointPtr = FirstSigMapEntry(&syncpoints, &iterator);
 	while (spointPtr != NULL) {
-	    // TODO signum can be extracted by HarvestSyncpoint
-	    HarvestSyncpoint(spointPtr->signum, spointPtr, &eventList);
+	    HarvestSyncpoint(spointPtr, &eventList);
 	    spointPtr = NextSigMapEntry(&iterator);
 	}
 
