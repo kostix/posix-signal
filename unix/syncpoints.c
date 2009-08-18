@@ -237,10 +237,25 @@ SetSyncPoint (
     int signum
     )
 {
+    SignalMapEntry *entryPtr;
+    SyncPoint *spointPtr;
     int isnew;
 
-    isnew = CreateSigMapEntry(&syncpoints, signum, CreateSyncPoint());
-    assert(isnew);
+    entryPtr = CreateSigMapEntry(&syncpoints, signum, &isnew);
+    spointPtr = GetSigMapValue(entryPtr);
+    if (spointPtr == NULL) {
+	spointPtr = CreateSyncPoint();
+	SetSigMapValue(entryPtr, spointPtr);
+    } else {
+	if (spointPtr->signaled == 0) {
+	    spointPtr->threadId = Tcl_GetCurrentThread();
+	} else {
+	    SyncPoint *nextPtr = spointPtr;
+	    spointPtr = CreateSyncPoint();
+	    spointPtr->nextPtr = nextPtr;
+	    SetSigMapValue(entryPtr, spointPtr);
+	}
+    }
 }
 
 /* TODO possibly we should panic if spointPtr == NULL
