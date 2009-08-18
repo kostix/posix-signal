@@ -73,14 +73,28 @@ FirstSigMapEntry (
     SignalMap *sigmapPtr,
     SignalMapSearch *searchPtr)
 {
-    return Tcl_FirstHashEntry(sigmapPtr, searchPtr);
+    Tcl_HashEntry *entryPtr;
+
+    entryPtr = Tcl_FirstHashEntry(sigmapPtr, searchPtr);
+    if (entryPtr != NULL) {
+	return Tcl_GetHashValue(entryPtr);
+    } else {
+	return NULL;
+    }
 }
 
 ClientData
 NextSigMapEntry (
     SignalMapSearch *searchPtr)
 {
-    return Tcl_NextHashEntry(searchPtr);
+    Tcl_HashEntry *entryPtr;
+
+    entryPtr = Tcl_NextHashEntry(searchPtr);
+    if (entryPtr != NULL) {
+	return Tcl_GetHashValue(entryPtr);
+    } else {
+	return NULL;
+    }
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
