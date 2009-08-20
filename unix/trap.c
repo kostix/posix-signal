@@ -99,6 +99,10 @@ TrapGet (
     cmdObj = GetEventHandlerCommand(id);
     if (cmdObj != NULL) {
 	Tcl_SetObjResult(interp, cmdObj);
+    } else {
+	/* Do nothing in this case, as it is guaranteed
+	 * that the interp result was reset to an empty
+	 * string befor calling our command */
     }
     return TCL_OK;
 }
