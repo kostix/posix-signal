@@ -3,6 +3,7 @@
 #include "sigtables.h"
 #include "sigmap.h"
 #include "syncpoints.h"
+#include "sigmanip.h"
 #include "events.h"
 #include <stdio.h>
 
@@ -139,7 +140,7 @@ ManagerThreadProc (
     ClientData clientData
     )
 {
-    /* TODO block all signals */
+    BlockAllSignals();
 
     while (1) {
 	SignalEventList eventList;
