@@ -4,6 +4,7 @@
 #include "syncpoints.h"
 #include "events.h"
 #include "utils.h"
+#include "sigmanip.h"
 #include "trap.h"
 
 
@@ -64,9 +65,11 @@ TrapSet (
      */
     SetEventHandler(id, interp, newCmdObj);
 
+    BlockAllSignals();
     LockSyncPoints();
     SetSyncPoint(id);
     UnlockSyncPoints();
+    UnblockAllSignals();
 
     Tcl_SetErrno(0);
     res = InstallSignalHandler(id);
