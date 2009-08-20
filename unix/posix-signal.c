@@ -8,6 +8,12 @@
 #include "trap.h"
 #include "send.h"
 #include "info.h"
+
+
+/* Sentinel for the initialization of the package global state */
+static int packageInitialized = 0;
+TCL_DECLARE_MUTEX(pkgInitLock);
+
 
 static
 int
@@ -55,10 +61,15 @@ Posixsignal_Init(Tcl_Interp * interp)
 	return TCL_ERROR;
     }
 
-    /* TODO protect by a package-global mutex,
-     * must be initialized once per process */
-    InitSignalTables();
-    InitSyncPoints();
+    /* Initialize global state which is shared by all loaded
+     * instances of this package and all threads */
+    Tcl_MutexLock(&pkgInitLock);
+    if (!packageInitialized) {
+	InitSignalTables();
+	InitSyncPoints();
+	packageInitialized = 1;
+    }
+    Tcl_MutexUnlock(&pkgInitLock);
 
     /* This initializer must be run each time the package
      * is loaded */
