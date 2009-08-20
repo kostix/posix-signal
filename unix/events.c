@@ -1,6 +1,6 @@
 #include <tcl.h>
 #include <assert.h>
-#include "sigtables.h"
+#include "sigmap.h"
 #include "events.h"
 #include <stdio.h>
 
@@ -13,11 +13,7 @@ typedef struct {
 
 typedef struct {
     int initialized;
-    int len;
-    struct {
-	Tcl_HashTable rt;
-	PS_SignalHandler *std[];
-    } items;
+    SignalMap map;
 } PS_SignalHandlers;
 
 static Tcl_ThreadDataKey handlersKey;
@@ -26,15 +22,9 @@ static
 PS_SignalHandlers*
 AllocHandlers (void)
 {
-    int len, nbytes;
     PS_SignalHandlers *handlersPtr;
 
-    len = max_signum;
-    nbytes = sizeof(*handlersPtr)
-	    + sizeof(handlersPtr->items.std[0]) * len;
-
-    handlersPtr = Tcl_GetThreadData(&handlersKey, nbytes);
-    handlersPtr->len = len;
+    handlersPtr = Tcl_GetThreadData(&handlersKey, sizeof(*handlersPtr));
 
     return handlersPtr;
 }
@@ -96,15 +86,7 @@ HandleSignalEvent (
 
     signum = sigEvPtr->signum;
     handlersPtr = GetHandlers();
-    if (signum <= max_signum) {
-	/* Standard signal */
-	handlerPtr = handlersPtr->items.std[SIGOFFSET(signum)];
-    } else {
-	/* Real-time signal */
-	Tcl_HashEntry *entryPtr;
-	entryPtr = Tcl_FindHashEntry(&handlersPtr->items.rt, WORDKEY(signum));
-	handlerPtr = Tcl_GetHashValue(entryPtr);
-    }
+    handlerPtr  = GetSigMapEntry(&handlersPtr->map, signum);
 
     interp = handlerPtr->interp;
     cmdObj = handlerPtr->cmdObj;
@@ -136,30 +118,16 @@ FreeEventHandlers (
     ClientData clientData
     )
 {
-    int i, len;
     PS_SignalHandlers *handlersPtr;
     PS_SignalHandler *handlerPtr;
+    SignalMapSearch iterator;
 
     handlersPtr = (PS_SignalHandlers*) clientData;
 
-    len = handlersPtr->len;
-    for (i = 0; i < len; ++i) {
-	handlerPtr = handlersPtr->items.std[i];
-	if (handlerPtr != NULL) {
-	    FreeSignalHandler(handlerPtr);
-	}
-    }
-
-    {
-	Tcl_HashEntry *entryPtr;
-	Tcl_HashSearch iterator;
-
-	entryPtr = Tcl_FirstHashEntry(&handlersPtr->items.rt, &iterator);
-	while (entryPtr != NULL) {
-	    handlerPtr = Tcl_GetHashValue(entryPtr);
-	    FreeSignalHandler(handlerPtr);
-	    entryPtr = Tcl_NextHashEntry(&iterator);
-	}
+    handlerPtr = FirstSigMapEntry(&handlersPtr->map, &iterator);
+    while (handlerPtr != NULL) {
+	FreeSignalHandler(handlerPtr);
+	handlerPtr = NextSigMapEntry(&iterator);
     }
 }
 
@@ -168,23 +136,12 @@ MODULE_SCOPE
 void
 InitEventHandlers (void)
 {
-    int i;
     PS_SignalHandlers *handlersPtr;
 
     handlersPtr = AllocHandlers();
     if (handlersPtr->initialized) return;
 
-    for (i = 0; i < handlersPtr->len; ++i) {
-	handlersPtr->items.std[i] = NULL;
-    }
-
-    /* Create handlers for known signals */
-    for (i = 0; i < nsigs; ++i) {
-	int index = SIGOFFSET(signals[i].signal);
-	handlersPtr->items.std[index] = CreateSignalHandler();
-    }
-
-    Tcl_InitHashTable(&handlersPtr->items.rt, TCL_ONE_WORD_KEYS);
+    InitSignalMap(&handlersPtr->map);
 
     handlersPtr->initialized = 1;
 
@@ -260,27 +217,22 @@ SetEventHandler (
 {
     PS_SignalHandlers *handlersPtr;
     PS_SignalHandler *handlerPtr;
+    SignalMapEntry *entryPtr;
+    int isnew;
 
     handlersPtr = GetHandlers();
-    if (signum <= max_signum) {
-	/* Standard signal */
-	handlerPtr = handlersPtr->items.std[SIGOFFSET(signum)];
+    entryPtr = CreateSigMapEntry(&handlersPtr->map, signum, &isnew);
+    if (isnew) {
+	handlerPtr = CreateSignalHandler();
+	SetSigMapValue(entryPtr, handlerPtr);
     } else {
-	/* Real-time signal */
-	Tcl_HashEntry *entryPtr;
-	int isnew;
-	entryPtr = Tcl_CreateHashEntry(&handlersPtr->items.rt,
-		WORDKEY(signum), &isnew);
-	if (isnew) {
-	    handlerPtr = CreateSignalHandler();
-	    Tcl_SetHashValue(entryPtr, handlerPtr);
-	} else {
-	    handlerPtr = Tcl_GetHashValue(entryPtr);
-	}
+	handlerPtr = GetSigMapValue(entryPtr);
     }
 
     handlerPtr->interp = interp;
 
+    /* TODO implement appending of scripts to
+     * existing commands */
     Tcl_DecrRefCount(handlerPtr->cmdObj);
 
     Tcl_IncrRefCount(newCmdObj);
@@ -298,20 +250,7 @@ GetEventHandlerCommand (
     PS_SignalHandler *handlerPtr;
 
     handlersPtr = GetHandlers();
-    if (signum <= max_signum) {
-	/* Standard signal */
-	handlerPtr = handlersPtr->items.std[SIGOFFSET(signum)];
-    } else {
-	/* Real-time signal */
-	Tcl_HashEntry *entryPtr;
-	entryPtr = Tcl_FindHashEntry(&handlersPtr->items.rt, WORDKEY(signum));
-	if (entryPtr != NULL) {
-	    handlerPtr = Tcl_GetHashValue(entryPtr);
-	} else {
-	    handlerPtr = NULL;
-	}
-    }
-
+    handlerPtr  = GetSigMapEntry(&handlersPtr->map, signum);
     if (handlerPtr == NULL) {
 	return NULL;
     } else {
