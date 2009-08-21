@@ -19,7 +19,7 @@ _UnlockSyncPoints (void);
 void
 InitSyncPoints (void);
 
-void
+int
 SetSyncPoint (
     int signum
     );

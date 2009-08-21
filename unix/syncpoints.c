@@ -234,7 +234,7 @@ InitSyncPoints (void)
  * for this
  */
 MODULE_SCOPE
-void
+int
 SetSyncPoint (
     int signum
     )
@@ -258,6 +258,7 @@ SetSyncPoint (
 	    SetSigMapValue(entryPtr, spointPtr);
 	}
     }
+    return isnew;
 }
 
 /* TODO possibly we should panic if spointPtr == NULL
