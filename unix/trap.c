@@ -8,6 +8,10 @@
 #include "trap.h"
 
 
+static void LockWorld (void);
+static void UnlockWorld (void);
+
+
 /* POSIX.1-2001 signal handler */
 static
 void
@@ -46,41 +50,54 @@ TrapSet (
     Tcl_Obj *newCmdObj
     )
 {
-    int id, res;
+    int id, res, isnew;
 
     id = GetSignumFromObj(interp, sigObj);
     if (id == -1) {
 	return TCL_ERROR;
     }
 
-    /* TODO SetEventHandler() should return some
-     * flag telling us whether the new script was
-     * installed/modified or deleted. In the latter
-     * case we should delete the syncpoint and
-     * change signal disposition to SIG_DFL.
-     * Note that this looks like a ternary logic:
-     * o Script is set
-     * o Script is deleted
-     * o No change
-     */
-    SetEventHandler(id, interp, newCmdObj);
+    if (IsEmptyString(newCmdObj)) {
+	/* Deletion of trap is requested */
+	SyncPoint *spointPtr;
 
-    BlockAllSignals();
-    LockSyncPoints();
-    SetSyncPoint(id);
-    UnlockSyncPoints();
-    UnblockAllSignals();
+	LockWorld();
+	spointPtr = GetSyncPoint(id);
+	if (spointPtr == NULL) {
+	    /* Do nothing -- syncpoint does not exist */
+	    UnlockWorld();
+	    return TCL_OK;
+	} else {
+	    DeleteSyncPoint(spointPtr);
+	    UninstallEventHandler(id);
+	    UnlockWorld();
+	    DeleteEventHandler(id);
+	    return TCL_OK;
+	}
+    } else {
+	/* Trapping of the signal is requested */
+	SyncPoint *spointPtr;
+	int isnew;
 
-    Tcl_SetErrno(0);
-    res = InstallSignalHandler(id);
-    if (res != 0) {
-	/* FIXME ideally we should somehow revert changes
-	 * made to cmdObj */
-	ReportPosixError(interp);
-	return TCL_ERROR;
+	LockWorld();
+	isnew = SetSyncPoint(id);
+	if (isnew) {
+	    Tcl_SetErrno(0);
+	    res = InstallSignalHandler(id);
+	    if (res != 0) {
+		/* TODO delete syncpoint created above.
+		 * Note that this poses another interesting problem:
+		 * how to handle deletion of a syncpoint if it has
+		 * pending signals on it? */
+		ReportPosixError(interp);
+		UnlockWorld();
+		return TCL_ERROR;
+	    }
+	}
+	SetEventHandler(id, interp, newCmdObj);
+	UnlockWorld();
+	return TCL_OK;
     }
-
-    return TCL_OK;
 }
 
 static
@@ -128,6 +145,21 @@ Command_Trap (
 	    Tcl_WrongNumArgs(interp, 2, objv, "signal ?command?");
 	    return TCL_ERROR;
     }
+}
+
+
+static void
+LockWorld (void)
+{
+    BlockAllSignals();
+    LockSyncPoints();
+}
+
+static void
+UnlockWorld(void)
+{
+    UnlockSyncPoints();
+    UnblockAllSignals();
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
