@@ -5,6 +5,11 @@ ReportPosixError (
     Tcl_Interp *interp
     );
 
+MODULE_SCOPE
+int
+IsEmptyString (
+    Tcl_Obj *objPtr)
+
 #define __POSIX_SIGNAL_UTILS_H
 #endif /* __POSIX_SIGNAL_UTILS_H */
 
