@@ -35,6 +35,8 @@ static int condReady;
 static Tcl_AsyncHandle activator;
 #endif /* TCL_THREADS */
 
+static SyncPoint * GetSyncPoint(int signum);
+
 static
 SyncPoint*
 AllocSyncPoint (
@@ -278,11 +280,26 @@ SignalSyncPoint (
 {
     SyncPoint *spointPtr;
 
-    spointPtr = GetSigMapEntry(&syncpoints, signum);
+    spointPtr = GetSyncPoint(signum);
 
     if (spointPtr != NULL) {
 	++spointPtr->signaled;
 	WakeManagerThread();
+    }
+}
+
+static
+SyncPoint *
+GetSyncPoint(
+    int signum)
+{
+    SignalMapEntry *entryPtr;
+
+    entryPtr = FindSigMapEntry(&syncpoints, signum);
+    if (entryPtr != NULL) {
+	return GetSigMapValue(entryPtr);
+    } else {
+	return NULL;
     }
 }
 
