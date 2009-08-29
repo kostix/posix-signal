@@ -18,6 +18,8 @@ typedef struct {
 
 static Tcl_ThreadDataKey handlersKey;
 
+static PS_SignalHandler * GetSignalHandler(int signum);
+
 static
 PS_SignalHandlers*
 AllocHandlers (void)
@@ -74,7 +76,6 @@ HandleSignalEvent (
     )
 {
     SignalEvent *sigEvPtr;
-    PS_SignalHandlers *handlersPtr;
     PS_SignalHandler *handlerPtr;
     Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
@@ -85,8 +86,7 @@ HandleSignalEvent (
 	    sigEvPtr->signum, sigEvPtr->threadId);
 
     signum = sigEvPtr->signum;
-    handlersPtr = GetHandlers();
-    handlerPtr  = GetSigMapEntry(&handlersPtr->map, signum);
+    handlerPtr  = GetSignalHandler(signum);
 
     interp = handlerPtr->interp;
     cmdObj = handlerPtr->cmdObj;
@@ -246,11 +246,9 @@ GetEventHandlerCommand (
     int signum
     )
 {
-    PS_SignalHandlers *handlersPtr;
     PS_SignalHandler *handlerPtr;
 
-    handlersPtr = GetHandlers();
-    handlerPtr  = GetSigMapEntry(&handlersPtr->map, signum);
+    handlerPtr  = GetSignalHandler(signum);
     if (handlerPtr == NULL) {
 	return NULL;
     } else {
@@ -283,6 +281,24 @@ void
 DeleteThreadEvents (void)
 {
     Tcl_DeleteEvents(IsOurEvent, NULL);
+}
+
+
+static
+PS_SignalHandler *
+GetSignalHandler(
+    int signum)
+{
+    PS_SignalHandlers *handlersPtr;
+    SignalMapEntry *entryPtr;
+
+    handlersPtr = GetHandlers();
+    entryPtr = FindSigMapEntry(&handlersPtr->map, signum);
+    if (entryPtr != NULL) {
+	return GetSigMapValue(entryPtr);
+    } else {
+	return NULL;
+    }
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
