@@ -241,6 +241,24 @@ SetEventHandler (
 
 
 MODULE_SCOPE
+void
+DeleteEventHandler (
+    int signum
+    )
+{
+    PS_SignalHandlers *handlersPtr;
+    SignalMapEntry *entryPtr;
+
+    handlersPtr = GetHandlers();
+    entryPtr = FindSigMapEntry(&handlersPtr->map, signum);
+    if (entryPtr != NULL) {
+	DeleteThreadEvents();
+	DeleteSigMapEntry(entryPtr);
+    }
+}
+
+
+MODULE_SCOPE
 Tcl_Obj*
 GetEventHandlerCommand (
     int signum

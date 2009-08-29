@@ -21,6 +21,11 @@ SetEventHandler (
     Tcl_Obj *newCmdObj
     );
 
+void
+DeleteEventHandler (
+    int signum
+    );
+
 Tcl_Obj*
 GetEventHandlerCommand (
     int signum
