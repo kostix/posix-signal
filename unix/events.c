@@ -104,7 +104,7 @@ HandleSignalEvent (
 
 static
 int
-DeleteEvent (
+IsOurEvent (
     Tcl_Event *evPtr,
     ClientData clientData
     )
@@ -282,7 +282,7 @@ MODULE_SCOPE
 void
 DeleteThreadEvents (void)
 {
-    Tcl_DeleteEvents(DeleteEvent, NULL);
+    Tcl_DeleteEvents(IsOurEvent, NULL);
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
