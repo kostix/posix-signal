@@ -37,7 +37,7 @@ static Tcl_AsyncHandle activator;
 
 static
 SyncPoint*
-CreateSyncPoint (
+AllocSyncPoint (
     int signum)
 {
     SyncPoint *spointPtr;
@@ -246,14 +246,14 @@ SetSyncPoint (
     entryPtr = CreateSigMapEntry(&syncpoints, signum, &isnew);
     spointPtr = GetSigMapValue(entryPtr);
     if (spointPtr == NULL) {
-	spointPtr = CreateSyncPoint(signum);
+	spointPtr = AllocSyncPoint(signum);
 	SetSigMapValue(entryPtr, spointPtr);
     } else {
 	if (spointPtr->signaled == 0) {
 	    spointPtr->threadId = Tcl_GetCurrentThread();
 	} else {
 	    SyncPoint *nextPtr = spointPtr;
-	    spointPtr = CreateSyncPoint(signum);
+	    spointPtr = AllocSyncPoint(signum);
 	    spointPtr->nextPtr = nextPtr;
 	    SetSigMapValue(entryPtr, spointPtr);
 	}
