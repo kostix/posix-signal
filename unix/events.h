@@ -37,9 +37,6 @@ CreateSignalEvent (
     int signum
     );
 
-void
-DeleteThreadEvents (void);
-
 #define __POSIX_SIGNAL_EVENTS_H
 #endif /* __POSIX_SIGNAL_EVENTS_H */
 

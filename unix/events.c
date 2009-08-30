@@ -18,6 +18,7 @@ typedef struct {
 
 static Tcl_ThreadDataKey handlersKey;
 
+static void DeleteThreadEvents (int signum);
 static PS_SignalHandler * GetSignalHandler(int signum);
 
 static
@@ -109,7 +110,17 @@ IsOurEvent (
     ClientData clientData
     )
 {
-    return evPtr->proc == HandleSignalEvent;
+    if (evPtr->proc == HandleSignalEvent) {
+	SignalEvent *eventPtr;
+	int *signumPtr;
+
+	eventPtr  = (SignalEvent *) evPtr;
+	signumPtr = (int *) clientData;
+
+	return eventPtr->signum = *signumPtr;
+    } else {
+	return 0;
+    }
 }
 
 static
@@ -252,10 +263,7 @@ DeleteEventHandler (
     handlersPtr = GetHandlers();
     entryPtr = FindSigMapEntry(&handlersPtr->map, signum);
     if (entryPtr != NULL) {
-	/* TODO this should only delete thread events
-	 * with the given signum; currently it would delete
-	 * all thread events of this class */
-	DeleteThreadEvents();
+	DeleteThreadEvents(signum);
 	DeleteSigMapEntry(entryPtr);
     }
 }
@@ -297,11 +305,12 @@ CreateSignalEvent (
 }
 
 
-MODULE_SCOPE
+static
 void
-DeleteThreadEvents (void)
+DeleteThreadEvents (
+    int signum)
 {
-    Tcl_DeleteEvents(IsOurEvent, NULL);
+    Tcl_DeleteEvents(IsOurEvent, &signum);
 }
 
 

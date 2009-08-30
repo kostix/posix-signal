@@ -1,6 +1,3 @@
-* Fix DeleteThreadEvents to only wipe the events
-  with a specific signum.
- 
 * Investigate possibility to improve implementation
   of signal tables.
   Factoring out their handling to a common
