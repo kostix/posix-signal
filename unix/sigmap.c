@@ -18,19 +18,12 @@ FreeSignalMap (
     Tcl_DeleteHashTable(sigmapPtr);
 }
 
-ClientData
-GetSigMapEntry (
+SignalMapEntry *
+FindSigMapEntry (
     SignalMap *sigmapPtr,
     int signum)
 {
-    Tcl_HashEntry *entryPtr;
-
-    entryPtr = Tcl_FindHashEntry(sigmapPtr, WORDKEY(signum));
-    if (entryPtr != NULL) {
-	return Tcl_GetHashValue(entryPtr);
-    } else {
-	return NULL;
-    }
+    return Tcl_FindHashEntry(sigmapPtr, WORDKEY(signum));
 }
 
 SignalMapEntry *

@@ -17,8 +17,8 @@ FreeSignalMap (
     SignalMap *sigmapPtr);
 
 MODULE_SCOPE
-ClientData
-GetSigMapEntry (
+SignalMapEntry *
+FindSigMapEntry (
     SignalMap *sigmapPtr,
     int signum);
 
