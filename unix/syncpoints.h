@@ -23,6 +23,11 @@ InitSyncPoints (void);
 
 MODULE_SCOPE
 SyncPointMapEntry
+FindSyncPoint (
+    int signum);
+
+MODULE_SCOPE
+SyncPointMapEntry
 AcquireSyncPoint (
     int signum,
     int *isnewPtr);

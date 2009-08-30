@@ -231,6 +231,13 @@ InitSyncPoints (void)
 }
 
 SyncPointMapEntry
+FindSyncPoint (
+    int signum)
+{
+    return FindSigMapEntry(&syncpoints, signum);
+}
+
+SyncPointMapEntry
 AcquireSyncPoint (
     int signum,
     int *isnewPtr)
