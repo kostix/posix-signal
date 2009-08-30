@@ -83,10 +83,16 @@ TrapSet (
 	    return TCL_OK;
 	} else {
 	    DeleteSyncPoint(spoint);
-	    UninstallEventHandler(id);
-	    UnlockWorld();
 	    DeleteEventHandler(id);
-	    return TCL_OK;
+	    Tcl_SetErrno(0);
+	    res = UninstallSignalHandler(id);
+	    UnlockWorld();
+	    if (res != 0) {
+		ReportPosixError(interp);
+		return TCL_OK;
+	    } else {
+		return TCL_OK;
+	    }
 	}
     } else {
 	/* Trapping of the signal is requested */
