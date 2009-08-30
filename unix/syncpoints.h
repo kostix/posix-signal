@@ -32,6 +32,11 @@ AcquireSyncPoint (
     int signum,
     int *isnewPtr);
 
+MODULE_SCOPE
+void
+DeleteSyncPoint (
+    SyncPointMapEntry entryPtr);
+
 void
 SignalSyncPoint (
     int signum

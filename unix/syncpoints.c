@@ -265,6 +265,15 @@ AcquireSyncPoint (
     return entryPtr;
 }
 
+void
+DeleteSyncPoint (
+    SyncPointMapEntry entry)
+{
+    /* TODO should save the chain of syncpoints
+     * if there are any signaled unhandled events in it */
+    DeleteSigMapEntry(entry);
+}
+
 /* TODO possibly we should panic if spointPtr == NULL
  * as this means we told the system we do handle the signal
  * but actually fail to do so.
