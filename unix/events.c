@@ -252,6 +252,9 @@ DeleteEventHandler (
     handlersPtr = GetHandlers();
     entryPtr = FindSigMapEntry(&handlersPtr->map, signum);
     if (entryPtr != NULL) {
+	/* TODO this should only delete thread events
+	 * with the given signum; currently it would delete
+	 * all thread events of this class */
 	DeleteThreadEvents();
 	DeleteSigMapEntry(entryPtr);
     }
