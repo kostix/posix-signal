@@ -297,8 +297,17 @@ void
 DeleteSyncPoint (
     SyncPointMapEntry entry)
 {
-    /* TODO should save the chain of syncpoints
-     * if there are any signaled unhandled events in it */
+    SyncPoint *spointPtr;
+
+    spointPtr = GetSigMapValue(entry);
+    if (spointPtr->signaled != 0) {
+	if (spointPtr->threadId != Tcl_GetCurrentThread()) {
+	    QueuePush(&danglingSpoints, spointPtr);
+	    /* TODO notify the owner thread that it has just
+	     * lost the syncpoint and should free any state
+	     * associated with it */
+	}
+    }
     DeleteSigMapEntry(entry);
 }
 
