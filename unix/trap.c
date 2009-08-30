@@ -63,7 +63,7 @@ TrapSet (
     Tcl_Obj *newCmdObj
     )
 {
-    int id, res, isnew;
+    int id, res;
 
     id = GetSignumFromObj(interp, sigObj);
     if (id == -1) {
@@ -72,16 +72,17 @@ TrapSet (
 
     if (IsEmptyString(newCmdObj)) {
 	/* Deletion of trap is requested */
-	SyncPoint *spointPtr;
+
+	SyncPointMapEntry spoint;
 
 	LockWorld();
-	spointPtr = GetSyncPoint(id);
-	if (spointPtr == NULL) {
+	spoint = FindSyncPoint(id);
+	if (spoint == NULL) {
 	    /* Do nothing -- syncpoint does not exist */
 	    UnlockWorld();
 	    return TCL_OK;
 	} else {
-	    DeleteSyncPoint(spointPtr);
+	    DeleteSyncPoint(spoint);
 	    UninstallEventHandler(id);
 	    UnlockWorld();
 	    DeleteEventHandler(id);
@@ -89,11 +90,11 @@ TrapSet (
 	}
     } else {
 	/* Trapping of the signal is requested */
-	SyncPoint *spointPtr;
+
 	int isnew;
 
 	LockWorld();
-	isnew = SetSyncPoint(id);
+	AcquireSyncPoint(id, &isnew);
 	if (isnew) {
 	    Tcl_SetErrno(0);
 	    res = InstallSignalHandler(id);
