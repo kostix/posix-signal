@@ -43,6 +43,19 @@ InstallSignalHandler (
 
 static
 int
+UninstallSignalHandler (
+    int signum
+    )
+{
+    struct sigaction sa;
+
+    sa.sa_handler = SIG_DFL;
+
+    return sigaction(signum, &sa, NULL);
+}
+
+static
+int
 TrapSet (
     ClientData clientData,
     Tcl_Interp *interp,
