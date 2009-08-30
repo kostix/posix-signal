@@ -1,5 +1,7 @@
 #ifndef __POSIX_SIGNAL_SYNCPOINTS_H
 
+typedef ClientData SyncPointMapEntry;
+
 #ifdef TCL_THREADS
 void
 _LockSyncPoints (void);
@@ -19,10 +21,11 @@ _UnlockSyncPoints (void);
 void
 InitSyncPoints (void);
 
-int
-SetSyncPoint (
-    int signum
-    );
+MODULE_SCOPE
+SyncPointMapEntry
+AcquireSyncPoint (
+    int signum,
+    int *isnewPtr);
 
 void
 SignalSyncPoint (

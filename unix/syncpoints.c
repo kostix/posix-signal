@@ -230,27 +230,21 @@ InitSyncPoints (void)
 #endif /* TCL_THREADS */
 }
 
-/* TODO essentially, creation of syncpoint includes
- * "resetting" it to current values.
- * Looks like we should create one special procedure
- * for this
- */
-MODULE_SCOPE
-int
-SetSyncPoint (
-    int signum
-    )
+SyncPointMapEntry
+AcquireSyncPoint (
+    int signum,
+    int *isnewPtr)
 {
     SignalMapEntry *entryPtr;
     SyncPoint *spointPtr;
-    int isnew;
 
-    entryPtr = CreateSigMapEntry(&syncpoints, signum, &isnew);
-    spointPtr = GetSigMapValue(entryPtr);
-    if (spointPtr == NULL) {
+    entryPtr = CreateSigMapEntry(&syncpoints, signum, isnewPtr);
+
+    if (*isnewPtr) {
 	spointPtr = AllocSyncPoint(signum);
 	SetSigMapValue(entryPtr, spointPtr);
     } else {
+	spointPtr = GetSigMapValue(entryPtr);
 	if (spointPtr->signaled == 0) {
 	    spointPtr->threadId = Tcl_GetCurrentThread();
 	} else {
@@ -260,7 +254,8 @@ SetSyncPoint (
 	    SetSigMapValue(entryPtr, spointPtr);
 	}
     }
-    return isnew;
+
+    return entryPtr;
 }
 
 /* TODO possibly we should panic if spointPtr == NULL
