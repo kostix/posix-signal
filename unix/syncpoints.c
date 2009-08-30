@@ -22,6 +22,7 @@ struct SyncPoint {
 typedef struct SyncPoint SyncPoint;
 
 static SignalMap syncpoints;
+static Queue danglingSpoints;
 TCL_DECLARE_MUTEX(spointsLock);
 
 #ifdef TCL_THREADS
@@ -120,26 +121,34 @@ HarvestSyncpoint (
     Queue *queuePtr
     )
 {
-    SyncPoint *nextPtr;
-    int level;
+    int signaled = spointPtr->signaled;
+    if (signaled) {
+	do {
+	    QueuePush(queuePtr,
+		    CreateSignalEvent(spointPtr->threadId,
+			    spointPtr->signum));
 
-    for (level = 0; spointPtr != NULL; spointPtr = nextPtr, ++level) {
-	int signaled = spointPtr->signaled;
-	if (signaled) {
-	    do {
-		QueuePush(queuePtr,
-			CreateSignalEvent(spointPtr->threadId,
-				spointPtr->signum));
+	    --signaled;
+	} while (signaled > 0);
+	spointPtr->signaled = 0;
+    }
+}
+#endif /* TCL_THREADS */
 
-		--signaled;
-	    } while (signaled > 0);
-	    spointPtr->signaled = 0;
-	}
+#ifdef TCL_THREADS
+static
+void
+HarvestDanglingSyncpoints (
+    Queue *spointsQueuePtr,
+    Queue *eventsQueuePtr)
+{
+    SyncPoint *spointPtr;
 
-	nextPtr = spointPtr->nextPtr;
-	if (level > 0) {
-	    FreeSyncPoint(spointPtr);
-	}
+    spointPtr = QueuePop(spointsQueuePtr);
+    while (spointPtr != NULL) {
+	HarvestSyncpoint(spointPtr, eventsQueuePtr);
+	FreeSyncPoint(spointPtr);
+	spointPtr = QueuePop(spointsQueuePtr);
     }
 }
 #endif /* TCL_THREADS */
@@ -166,6 +175,8 @@ ManagerThreadProc (
 	condReady = 0;
 
 	InitEventList(&eventQueue);
+
+	HarvestDanglingSyncpoints(&danglingSpoints, &eventQueue);
 
 	spointPtr = FirstSigMapEntry(&syncpoints, &iterator);
 	while (spointPtr != NULL) {
@@ -223,6 +234,8 @@ InitSyncPoints (void)
 {
     InitSignalMap(&syncpoints);
 
+    InitSyncPointQueue(&danglingSpoints);
+
 #ifdef TCL_THREADS
     {
 	Tcl_ThreadId threadId;
@@ -260,14 +273,20 @@ AcquireSyncPoint (
 	spointPtr = AllocSyncPoint(signum);
 	SetSigMapValue(entryPtr, spointPtr);
     } else {
+	Tcl_ThreadId thisThreadId;
 	spointPtr = GetSigMapValue(entryPtr);
+	thisThreadId = Tcl_GetCurrentThread();
 	if (spointPtr->signaled == 0) {
-	    spointPtr->threadId = Tcl_GetCurrentThread();
+	    spointPtr->threadId = thisThreadId;
 	} else {
-	    SyncPoint *nextPtr = spointPtr;
-	    spointPtr = AllocSyncPoint(signum);
-	    spointPtr->nextPtr = nextPtr;
-	    SetSigMapValue(entryPtr, spointPtr);
+	    if (spointPtr->threadId != thisThreadId) {
+		SyncPoint *newPtr;
+		QueuePush(&danglingSpoints, spointPtr);
+		newPtr = AllocSyncPoint(signum);
+		SetSigMapValue(entryPtr, newPtr);
+	    } else {
+		/* Do nothing -- the syncpoint is already ours */
+	    }
 	}
     }
 
