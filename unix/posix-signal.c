@@ -11,7 +11,7 @@
 
 
 /* Sentinel for the initialization of the package global state */
-static int packageInitialized = 0;
+static int packageRefcount = 0;
 TCL_DECLARE_MUTEX(pkgInitLock);
 
 
@@ -64,11 +64,11 @@ Posixsignal_Init(Tcl_Interp * interp)
     /* Initialize global state which is shared by all loaded
      * instances of this package and all threads */
     Tcl_MutexLock(&pkgInitLock);
-    if (!packageInitialized) {
+    if (packageRefcount == 0) {
 	InitSignalTables();
 	InitSyncPoints();
-	packageInitialized = 1;
     }
+    ++packageRefcount;
     Tcl_MutexUnlock(&pkgInitLock);
 
     /* This initializer must be run each time the package
