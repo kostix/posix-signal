@@ -5,6 +5,7 @@
 #include "syncpoints.h"
 #include "sigmanip.h"
 #include "events.h"
+#include "queue.h"
 #include <stdio.h>
 
 #define WORDKEY(KEY) ((char *) (KEY))
@@ -19,11 +20,6 @@ struct SyncPoint {
 };
 
 typedef struct SyncPoint SyncPoint;
-
-typedef struct {
-    SignalEvent *headPtr;
-    SignalEvent *tailPtr;
-} SignalEventList;
 
 static SignalMap syncpoints;
 TCL_DECLARE_MUTEX(spointsLock);
@@ -79,28 +75,37 @@ WakeManagerThread (void)
 
 static
 void
-EmptyEventList (
-    SignalEventList *listPtr
-    )
+SetNextEvent (
+    QueueEntry entry,
+    QueueEntry nextEntry)
 {
-    listPtr->headPtr = NULL;
-    listPtr->tailPtr = NULL;
+    SignalEvent *thisPtr, *nextPtr;
+
+    thisPtr = entry;
+    nextPtr = nextEntry;
+
+    thisPtr->event.nextPtr = (Tcl_Event *) nextPtr;
+}
+
+static
+QueueEntry
+GetNextEvent (
+    QueueEntry entry)
+{
+    SignalEvent *eventPtr;
+
+    eventPtr = entry;
+
+    return (QueueEntry) eventPtr->event.nextPtr;
 }
 
 static
 void
-AddEventToList (
-    SignalEventList *listPtr,
-    SignalEvent *evPtr
+InitEventList (
+    Queue *queuePtr
     )
 {
-    if (listPtr->tailPtr == NULL) {
-	listPtr->headPtr = evPtr;
-    } else {
-	listPtr->tailPtr->event.nextPtr = (Tcl_Event*) evPtr;
-    }
-    listPtr->tailPtr = evPtr;
-    listPtr->tailPtr->event.nextPtr = NULL;
+    InitQueue(queuePtr, SetNextEvent, GetNextEvent);
 }
 
 #ifdef TCL_THREADS
@@ -108,7 +113,7 @@ static
 void
 HarvestSyncpoint (
     SyncPoint *spointPtr,
-    SignalEventList *evListPtr
+    Queue *queuePtr
     )
 {
     SyncPoint *nextPtr;
@@ -118,7 +123,7 @@ HarvestSyncpoint (
 	int signaled = spointPtr->signaled;
 	if (signaled) {
 	    do {
-		AddEventToList(evListPtr,
+		QueuePush(queuePtr,
 			CreateSignalEvent(spointPtr->threadId,
 				spointPtr->signum));
 
@@ -145,7 +150,7 @@ ManagerThreadProc (
     BlockAllSignals();
 
     while (1) {
-	SignalEventList eventList;
+	Queue eventQueue;
 	SignalMapSearch iterator;
 	SyncPoint *spointPtr;
 
@@ -156,11 +161,11 @@ ManagerThreadProc (
 	}
 	condReady = 0;
 
-	EmptyEventList(&eventList);
+	InitEventList(&eventQueue);
 
 	spointPtr = FirstSigMapEntry(&syncpoints, &iterator);
 	while (spointPtr != NULL) {
-	    HarvestSyncpoint(spointPtr, &eventList);
+	    HarvestSyncpoint(spointPtr, &eventQueue);
 	    spointPtr = NextSigMapEntry(&iterator);
 	}
 
@@ -170,13 +175,13 @@ ManagerThreadProc (
 	    SignalEvent *evPtr;
 	    Tcl_ThreadId lastId;
 
-	    evPtr = eventList.headPtr;
+	    evPtr = QueuePop(&eventQueue);
 	    lastId = evPtr->threadId;
 	    do {
 		SignalEvent *nextEvPtr;
 		Tcl_ThreadId threadId;
 
-		nextEvPtr = evPtr->event.nextPtr;
+		nextEvPtr = QueuePop(&eventQueue);
 		threadId = evPtr->threadId;
 		Tcl_ThreadQueueEvent(threadId,
 			(Tcl_Event*) evPtr, TCL_QUEUE_TAIL);
