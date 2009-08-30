@@ -33,6 +33,10 @@ static Tcl_AsyncHandle activator;
 
 static SyncPoint * GetSyncPoint(int signum);
 
+static void SetNextSyncPoint (QueueEntry entry, QueueEntry nextEntry);
+static QueueEntry GetNextSyncPoint (QueueEntry entry);
+static void InitSyncPointQueue (Queue *queuePtr);
+
 static
 SyncPoint*
 AllocSyncPoint (
@@ -317,6 +321,41 @@ GetSyncPoint(
     } else {
 	return NULL;
     }
+}
+
+static
+void
+SetNextSyncPoint (
+    QueueEntry entry,
+    QueueEntry nextEntry)
+{
+    SyncPoint *thisPtr, *nextPtr;
+
+    thisPtr = entry;
+    nextPtr = nextEntry;
+
+    thisPtr->nextPtr = nextPtr;
+}
+
+static
+QueueEntry
+GetNextSyncPoint (
+    QueueEntry entry)
+{
+    SyncPoint *spointPtr;
+
+    spointPtr = entry;
+
+    return (QueueEntry) spointPtr->nextPtr;
+}
+
+static
+void
+InitSyncPointQueue (
+    Queue *queuePtr
+    )
+{
+    InitQueue(queuePtr, SetNextSyncPoint, GetNextSyncPoint);
 }
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
