@@ -41,10 +41,9 @@ SetSigMapValue (
     ClientData clientData);
 
 MODULE_SCOPE
-ClientData
+void
 DeleteSigMapEntry (
-    SignalMap *sigmapPtr,
-    int signum);
+    SignalMapEntry *entryPtr);
 
 MODULE_SCOPE
 ClientData

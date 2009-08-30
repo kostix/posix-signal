@@ -50,23 +50,11 @@ SetSigMapValue (
     Tcl_SetHashValue(entryPtr, clientData);
 }
 
-ClientData
+void
 DeleteSigMapEntry (
-    SignalMap *sigmapPtr,
-    int signum)
+    SignalMapEntry *entryPtr)
 {
-    Tcl_HashEntry *entryPtr;
-
-    entryPtr = Tcl_FindHashEntry(sigmapPtr, WORDKEY(signum));
-    if (entryPtr != NULL) {
-	ClientData clientData;
-
-	clientData = Tcl_GetHashValue(entryPtr);
-	Tcl_DeleteHashEntry(entryPtr);
-	return clientData;
-    } else {
-	return NULL;
-    }
+    Tcl_DeleteHashEntry(entryPtr);
 }
 
 ClientData
