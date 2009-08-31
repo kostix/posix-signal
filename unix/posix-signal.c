@@ -57,6 +57,8 @@ CleanupPackage (
 
     --packageRefcount;
     if (packageRefcount == 0) {
+	printf("about to finalize syncpoints\n");
+	fflush(stdout);
 	FinalizeSyncpoints();
     }
 
@@ -81,6 +83,8 @@ Posixsignal_Init(Tcl_Interp * interp)
      * instances of this package and all threads */
     Tcl_MutexLock(&pkgInitLock);
     if (packageRefcount == 0) {
+	printf("about to init syncpoints\n");
+	fflush(stdout);
 	InitSignalTables();
 	InitSyncPoints();
     }
