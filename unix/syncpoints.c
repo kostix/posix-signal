@@ -28,6 +28,7 @@ TCL_DECLARE_MUTEX(spointsLock);
 #ifdef TCL_THREADS
 static Tcl_Condition spointsCV;
 static int condReady;
+static int shutdownRequested = 0;
 #else
 static Tcl_AsyncHandle activator;
 #endif /* TCL_THREADS */
@@ -174,6 +175,11 @@ ManagerThreadProc (
 	}
 	condReady = 0;
 
+	if (shutdownRequested) {
+	    Tcl_MutexUnlock(&spointsLock);
+	    break;
+	}
+
 	InitEventList(&eventQueue);
 
 	HarvestDanglingSyncpoints(&danglingSpoints, &eventQueue);
@@ -211,6 +217,8 @@ ManagerThreadProc (
 	    Tcl_ThreadAlert(lastId);
 	}
     }
+
+    Tcl_ExitThread(0);
 }
 #endif /* TCL_THREADS */
 
@@ -250,6 +258,32 @@ InitSyncPoints (void)
 	}
     }
 #endif /* TCL_THREADS */
+}
+
+void
+FinalizeSyncpoints (void)
+{
+#ifdef TCL_THREADS
+    Tcl_MutexLock(&spointsLock);
+
+    shutdownRequested = 1;
+    condReady = 1;
+    Tcl_ConditionNotify(&spointsCV);
+
+    Tcl_MutexUnlock(&spointsLock);
+#endif /* TCL_THREADS */
+
+    /* TODO free existing syncpoints.
+     * Note that this is a complicated problem
+     * as we must ensure no thread is accessing
+     * this data.
+     * In principle, this function should only be
+     * called when the last thread using this package
+     * is about to be destroyed, so we can assume
+     * only this thread + the manager thread exist,
+     * and only they need cooperation.
+     * Also any signal handling in both threads
+     * should be disabled somehow */
 }
 
 SyncPointMapEntry
