@@ -46,6 +46,22 @@ Signal_Command (
 
     return procs[cmd](clientData, interp, objc, objv);
 }
+
+
+static
+void
+CleanupPackage (
+    ClientData clientData)
+{
+    Tcl_MutexLock(&pkgInitLock);
+
+    --packageRefcount;
+    if (packageRefcount == 0) {
+	FinalizeSyncpoints();
+    }
+
+    Tcl_MutexUnlock(&pkgInitLock);
+}
 
 int
 Posixsignal_Init(Tcl_Interp * interp)
@@ -74,6 +90,8 @@ Posixsignal_Init(Tcl_Interp * interp)
     /* This initializer must be run each time the package
      * is loaded */
     InitEventHandlers();
+
+    Tcl_CreateThreadExitHandler(CleanupPackage, NULL);
 
     Tcl_CreateObjCommand(interp, PACKAGE_NAME,
 	    Signal_Command, clientData, NULL);
