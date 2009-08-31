@@ -43,6 +43,17 @@
     This will possibly eliminate the need of
     waiting for that thread to exit.
 
+  NOTE it also might turn out that the manager thread
+  fails to start before we signal a syncpoint.
+  This seems to be possible because with debug
+  syncpoints init/finalize printouts enabled
+  (commit 7094070) we don't see any printouts from
+  the sending/receiving code.
+  Thus, the race between the manager thread and the
+  threads which use the package (including main
+  in the case of tests/rtsend.tcl) might as well
+  occur even at startup.
+
 * Investigate possibility to improve implementation
   of signal tables.
   Factoring out their handling to a common
