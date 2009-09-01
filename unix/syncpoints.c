@@ -229,8 +229,6 @@ ManagerThreadProc (
     threadReady = 1;
     Tcl_ConditionNotify(&spointsCV);
     Tcl_MutexUnlock(&spointsLock);
-
-    Tcl_ExitThread(0);
 }
 #endif /* TCL_THREADS */
 
