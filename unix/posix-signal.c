@@ -66,8 +66,6 @@ CleanupPackage (
 int
 Posixsignal_Init(Tcl_Interp * interp)
 {
-    ClientData clientData;
-
 #ifdef USE_TCL_STUBS
     if (Tcl_InitStubs(interp, "8.1", 0) == NULL) {
 	return TCL_ERROR;
@@ -94,7 +92,7 @@ Posixsignal_Init(Tcl_Interp * interp)
     Tcl_CreateThreadExitHandler(CleanupPackage, NULL);
 
     Tcl_CreateObjCommand(interp, PACKAGE_NAME,
-	    Signal_Command, clientData, NULL);
+	    Signal_Command, NULL, NULL);
 
     if (Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION) != TCL_OK) {
 	return TCL_ERROR;
