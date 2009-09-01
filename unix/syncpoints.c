@@ -181,7 +181,6 @@ ManagerThreadProc (
 	condReady = 0;
 
 	if (shutdownRequested) {
-	    Tcl_MutexUnlock(&spointsLock);
 	    break;
 	}
 
@@ -224,6 +223,12 @@ ManagerThreadProc (
 
 	Tcl_MutexLock(&spointsLock);
     }
+
+    /* Notify creator thread we're finished.
+     * Note that the spointsLock is held at this point. */
+    threadReady = 1;
+    Tcl_ConditionNotify(&spointsCV);
+    Tcl_MutexUnlock(&spointsLock);
 
     Tcl_ExitThread(0);
 }
@@ -299,15 +304,29 @@ InitSyncPoints (void)
 void
 FinalizeSyncpoints (void)
 {
+    BlockAllSignals();
+
 #ifdef TCL_THREADS
     Tcl_MutexLock(&spointsLock);
 
+    /* Request the manager thread to terminate */
     shutdownRequested = 1;
     condReady = 1;
     Tcl_ConditionNotify(&spointsCV);
 
+    /* Wait for the manager thread to report back it's finished.
+     * Note that Tcl_ConditionWait unlocks spointsLock
+     * before starting to wait on spointsCV
+     * and locks it again before returning */
+    threadReady = 0;
+    while (threadReady == 0) {
+	Tcl_ConditionWait(&spointsCV, &spointsLock, NULL);
+    }
+
     Tcl_MutexUnlock(&spointsLock);
 #endif /* TCL_THREADS */
+
+    UnblockAllSignals();
 
     /* TODO free existing syncpoints.
      * Note that this is a complicated problem
