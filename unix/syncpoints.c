@@ -27,6 +27,7 @@ TCL_DECLARE_MUTEX(spointsLock);
 
 #ifdef TCL_THREADS
 static Tcl_Condition spointsCV;
+static int threadReady;
 static int condReady;
 static int shutdownRequested = 0;
 #else
@@ -163,12 +164,16 @@ ManagerThreadProc (
 {
     BlockAllSignals();
 
+    Tcl_MutexLock(&spointsLock);
+
+    /* Notify creator thread we're ready */
+    threadReady = 1;
+    Tcl_ConditionNotify(&spointsCV);
+
     while (1) {
 	Queue eventQueue;
 	SignalMapSearch iterator;
 	SyncPoint *spointPtr;
-
-	Tcl_MutexLock(&spointsLock);
 
 	while (condReady == 0) {
 	    Tcl_ConditionWait(&spointsCV, &spointsLock, NULL);
@@ -216,6 +221,8 @@ ManagerThreadProc (
 	    } while (evPtr != NULL);
 	    Tcl_ThreadAlert(lastId);
 	}
+
+	Tcl_MutexLock(&spointsLock);
     }
 
     Tcl_ExitThread(0);
@@ -249,6 +256,27 @@ InitSyncPoints (void)
 	Tcl_ThreadId threadId;
 	int res;
 
+	/* FIXME in theory, we must not serve any signals
+	 * while running this block to avoid double locks
+	 * on spointsLock. But as this function is supposedly
+	 * only run when the package is being initialized
+	 * for the first time, and all the threads loading
+	 * this package are synchronized over its
+	 * common initialization part, we can possibly assume
+	 * no signals will be served by this thread while
+	 * it executes this function */
+
+	/* FIXME also it's interesting whether the signal
+	 * mask is inherited by the created threads.
+	 * If this is true, we could call BlockAllSignals()
+	 * here and get the syncpoints manager thread
+	 * inherit this disposition, and the simply
+	 * call UnblockAllSignals() when the manager thread
+	 * reports back */
+
+	Tcl_MutexLock(&spointsLock);
+
+	threadReady = 0;
 	res = Tcl_CreateThread(&threadId, &ManagerThreadProc,
 		NULL,
 		TCL_THREAD_STACK_DEFAULT,
@@ -256,6 +284,14 @@ InitSyncPoints (void)
 	if (res != 0) {
 	    Tcl_Panic(PACKAGE_NAME ": failed to create manager thread");
 	}
+
+	/* Wait for the manager thread to report back */
+	while (threadReady == 0) {
+	    Tcl_ConditionWait(&spointsCV, &spointsLock, NULL);
+	}
+	threadReady = 0;
+
+	Tcl_MutexUnlock(&spointsLock);
     }
 #endif /* TCL_THREADS */
 }
