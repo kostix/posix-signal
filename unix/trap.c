@@ -64,6 +64,7 @@ TrapSet (
     )
 {
     int signum, res;
+    SyncPointMapEntry spoint;
 
     signum = GetSignumFromObj(interp, sigObj);
     if (signum == -1) {
@@ -72,8 +73,6 @@ TrapSet (
 
     if (IsEmptyString(newCmdObj)) {
 	/* Deletion of trap is requested */
-
-	SyncPointMapEntry spoint;
 
 	LockWorld();
 	spoint = FindSyncPoint(signum);
@@ -100,15 +99,12 @@ TrapSet (
 	int isnew;
 
 	LockWorld();
-	AcquireSyncPoint(signum, &isnew);
+	spoint = AcquireSyncPoint(signum, &isnew);
 	if (isnew) {
 	    Tcl_SetErrno(0);
 	    res = InstallSignalHandler(signum);
 	    if (res != 0) {
-		/* TODO delete syncpoint created above.
-		 * Note that this poses another interesting problem:
-		 * how to handle deletion of a syncpoint if it has
-		 * pending signals on it? */
+		DeleteSyncPoint(spoint);
 		UnlockWorld();
 		ReportPosixError(interp);
 		return TCL_ERROR;
