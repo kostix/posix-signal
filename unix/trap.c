@@ -88,7 +88,7 @@ TrapSet (
 	    UnlockWorld();
 	    if (res != 0) {
 		ReportPosixError(interp);
-		return TCL_OK;
+		return TCL_ERROR;
 	    } else {
 		return TCL_OK;
 	    }
