@@ -50,6 +50,22 @@ Signal_Command (
 
 static
 void
+InitPackage (void)
+{
+    Tcl_MutexLock(&pkgInitLock);
+
+    if (packageRefcount == 0) {
+	InitSignalTables();
+	InitSyncPoints();
+    }
+    ++packageRefcount;
+
+    Tcl_MutexUnlock(&pkgInitLock);
+}
+
+
+static
+void
 CleanupPackage (
     ClientData clientData)
 {
@@ -77,13 +93,7 @@ Posixsignal_Init(Tcl_Interp * interp)
 
     /* Initialize global state which is shared by all loaded
      * instances of this package and all threads */
-    Tcl_MutexLock(&pkgInitLock);
-    if (packageRefcount == 0) {
-	InitSignalTables();
-	InitSyncPoints();
-    }
-    ++packageRefcount;
-    Tcl_MutexUnlock(&pkgInitLock);
+    InitPackage();
 
     /* This initializer must be run each time the package
      * is loaded */
