@@ -50,6 +50,29 @@ Signal_Command (
 
 static
 void
+PrepareShutdown (
+    ClientData clientData)
+{
+    /* TODO block all signals, lock syncpoints,
+     * call something which will raise a flag
+     * "syncpoint signaling disabled". */
+
+    /* FIXME it's not yet clear whether it is
+     * safe to assume that by the time this
+     * global exit handler is called it is guaranteed
+     * that no Tcl interp is executing the code
+     * (in other threads), and that event queues in
+     * those threads are drained (i.e. the threads
+     * exist but are defunct).
+     * If it is guaranteed we can call FinalizeSyncpoints
+     * right away and per-thread exit handlers will
+     * just clean up their tables of event handlers
+     * and pending events (if it is not done by Tcl). */
+}
+
+
+static
+void
 InitPackage (void)
 {
     Tcl_MutexLock(&pkgInitLock);
@@ -57,6 +80,8 @@ InitPackage (void)
     if (packageRefcount == 0) {
 	InitSignalTables();
 	InitSyncPoints();
+
+	Tcl_CreateExitHandler(PrepareShutdown, NULL);
     }
     ++packageRefcount;
 
