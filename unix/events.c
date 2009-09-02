@@ -132,6 +132,23 @@ FreeEventHandlers (
 }
 
 
+/* The idea behind this way of initialization is as follows.
+ * Each thread can have any number of interps, each of which can
+ * load this package. Loading of the package makes this function
+ * run in the interp; therefore, it can be legitimately called
+ * several times in the same thread while the table of event
+ * handlers should be initialized only once in a given thread.
+ * To provide for this, we rely on the fact the memory block
+ * returned by GetHandlers() will be initialized to all zeroes
+ * the first time it is created for a thread, and so the
+ * "initialized" flag it contains will be reset.  If this flag
+ * is not set after a call to GetHandlers(), then this is the
+ * first time InitEventHandlers() is called in this thread, and
+ * so we initialize the table of event handlers.  All subsequent
+ * calls to this function in the same thread (supposedly made in
+ * other interps) will have the "initialized" flag set in the
+ * data returned by GetHandlers() and the initialization
+ * will be skipped. */
 MODULE_SCOPE
 void
 InitEventHandlers (void)
@@ -139,14 +156,14 @@ InitEventHandlers (void)
     EventHandlers *handlersPtr;
 
     handlersPtr = GetHandlers();
-    if (handlersPtr->initialized) return;
+    if (!handlersPtr->initialized) {
+	InitSignalMap(&handlersPtr->map);
 
-    InitSignalMap(&handlersPtr->map);
+	Tcl_CreateThreadExitHandler(FreeEventHandlers,
+		(ClientData) handlersPtr);
 
-    handlersPtr->initialized = 1;
-
-    Tcl_CreateThreadExitHandler(FreeEventHandlers,
-	    (ClientData) handlersPtr);
+	handlersPtr->initialized = 1;
+    }
 }
 
 
