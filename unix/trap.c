@@ -63,10 +63,10 @@ TrapSet (
     Tcl_Obj *newCmdObj
     )
 {
-    int id, res;
+    int signum, res;
 
-    id = GetSignumFromObj(interp, sigObj);
-    if (id == -1) {
+    signum = GetSignumFromObj(interp, sigObj);
+    if (signum == -1) {
 	return TCL_ERROR;
     }
 
@@ -76,16 +76,16 @@ TrapSet (
 	SyncPointMapEntry spoint;
 
 	LockWorld();
-	spoint = FindSyncPoint(id);
+	spoint = FindSyncPoint(signum);
 	if (spoint == NULL) {
 	    /* Do nothing -- syncpoint does not exist */
 	    UnlockWorld();
 	    return TCL_OK;
 	} else {
 	    DeleteSyncPoint(spoint);
-	    DeleteEventHandler(id);
+	    DeleteEventHandler(signum);
 	    Tcl_SetErrno(0);
-	    res = UninstallSignalHandler(id);
+	    res = UninstallSignalHandler(signum);
 	    UnlockWorld();
 	    if (res != 0) {
 		ReportPosixError(interp);
@@ -100,10 +100,10 @@ TrapSet (
 	int isnew;
 
 	LockWorld();
-	AcquireSyncPoint(id, &isnew);
+	AcquireSyncPoint(signum, &isnew);
 	if (isnew) {
 	    Tcl_SetErrno(0);
-	    res = InstallSignalHandler(id);
+	    res = InstallSignalHandler(signum);
 	    if (res != 0) {
 		/* TODO delete syncpoint created above.
 		 * Note that this poses another interesting problem:
@@ -114,7 +114,7 @@ TrapSet (
 		return TCL_ERROR;
 	    }
 	}
-	SetEventHandler(id, interp, newCmdObj);
+	SetEventHandler(signum, interp, newCmdObj);
 	UnlockWorld();
 	return TCL_OK;
     }
@@ -128,15 +128,15 @@ TrapGet (
     Tcl_Obj *sigObj
     )
 {
-    int id;
+    int signum;
     Tcl_Obj *cmdObj;
 
-    id = GetSignumFromObj(interp, sigObj);
-    if (id == -1) {
+    signum = GetSignumFromObj(interp, sigObj);
+    if (signum == -1) {
 	return TCL_ERROR;
     }
 
-    cmdObj = GetEventHandlerCommand(id);
+    cmdObj = GetEventHandlerCommand(signum);
     if (cmdObj != NULL) {
 	Tcl_SetObjResult(interp, cmdObj);
     } else {
