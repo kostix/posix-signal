@@ -22,21 +22,10 @@ static void DeleteThreadEvents (int signum);
 static EventHandler * GetSignalHandler(int signum);
 
 static
-EventHandlers*
-AllocHandlers (void)
-{
-    EventHandlers *handlersPtr;
-
-    handlersPtr = Tcl_GetThreadData(&handlersKey, sizeof(*handlersPtr));
-
-    return handlersPtr;
-}
-
-static
-EventHandlers*
+EventHandlers *
 GetHandlers (void)
 {
-    return Tcl_GetThreadData(&handlersKey, 0);
+    return Tcl_GetThreadData(&handlersKey, sizeof(EventHandlers));
 }
 
 static
@@ -149,7 +138,7 @@ InitEventHandlers (void)
 {
     EventHandlers *handlersPtr;
 
-    handlersPtr = AllocHandlers();
+    handlersPtr = GetHandlers();
     if (handlersPtr->initialized) return;
 
     InitSignalMap(&handlersPtr->map);
