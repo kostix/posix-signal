@@ -109,8 +109,8 @@ TrapSet (
 		 * Note that this poses another interesting problem:
 		 * how to handle deletion of a syncpoint if it has
 		 * pending signals on it? */
-		ReportPosixError(interp);
 		UnlockWorld();
+		ReportPosixError(interp);
 		return TCL_ERROR;
 	    }
 	}
