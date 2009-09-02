@@ -9,23 +9,23 @@
 typedef struct {
     Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
-} PS_SignalHandler;
+} EventHandler;
 
 typedef struct {
     int initialized;
     SignalMap map;
-} PS_SignalHandlers;
+} EventHandlers;
 
 static Tcl_ThreadDataKey handlersKey;
 
 static void DeleteThreadEvents (int signum);
-static PS_SignalHandler * GetSignalHandler(int signum);
+static EventHandler * GetSignalHandler(int signum);
 
 static
-PS_SignalHandlers*
+EventHandlers*
 AllocHandlers (void)
 {
-    PS_SignalHandlers *handlersPtr;
+    EventHandlers *handlersPtr;
 
     handlersPtr = Tcl_GetThreadData(&handlersKey, sizeof(*handlersPtr));
 
@@ -33,20 +33,20 @@ AllocHandlers (void)
 }
 
 static
-PS_SignalHandlers*
+EventHandlers*
 GetHandlers (void)
 {
     return Tcl_GetThreadData(&handlersKey, 0);
 }
 
 static
-PS_SignalHandler*
+EventHandler*
 CreateSignalHandler (void)
 {
-    PS_SignalHandler *handlerPtr;
+    EventHandler *handlerPtr;
     Tcl_Obj *cmdObj;
 
-    handlerPtr = (PS_SignalHandler*) ckalloc(sizeof(PS_SignalHandler));
+    handlerPtr = (EventHandler*) ckalloc(sizeof(EventHandler));
 
     handlerPtr->interp = NULL;
 
@@ -60,7 +60,7 @@ CreateSignalHandler (void)
 static
 void
 FreeSignalHandler (
-    PS_SignalHandler *handlerPtr
+    EventHandler *handlerPtr
     )
 {
     Tcl_DecrRefCount(handlerPtr->cmdObj);
@@ -77,7 +77,7 @@ HandleSignalEvent (
     )
 {
     SignalEvent *sigEvPtr;
-    PS_SignalHandler *handlerPtr;
+    EventHandler *handlerPtr;
     Tcl_Interp *interp;
     Tcl_Obj *cmdObj;
     int signum, code;
@@ -129,11 +129,11 @@ FreeEventHandlers (
     ClientData clientData
     )
 {
-    PS_SignalHandlers *handlersPtr;
-    PS_SignalHandler *handlerPtr;
+    EventHandlers *handlersPtr;
+    EventHandler *handlerPtr;
     SignalMapSearch iterator;
 
-    handlersPtr = (PS_SignalHandlers*) clientData;
+    handlersPtr = (EventHandlers*) clientData;
 
     handlerPtr = FirstSigMapEntry(&handlersPtr->map, &iterator);
     while (handlerPtr != NULL) {
@@ -147,7 +147,7 @@ MODULE_SCOPE
 void
 InitEventHandlers (void)
 {
-    PS_SignalHandlers *handlersPtr;
+    EventHandlers *handlersPtr;
 
     handlersPtr = AllocHandlers();
     if (handlersPtr->initialized) return;
@@ -164,7 +164,7 @@ InitEventHandlers (void)
 static
 void
 Original_SetEventHandler (
-    PS_SignalHandler *handlerPtr,
+    EventHandler *handlerPtr,
     Tcl_Interp *interp,
     Tcl_Obj *newCmdObj
     )
@@ -172,7 +172,7 @@ Original_SetEventHandler (
     int len;
     Tcl_Obj *cmdObj;
     const char *newCmdPtr;
-    PS_SignalHandlers *handlersPtr;
+    EventHandlers *handlersPtr;
 
     handlersPtr = GetHandlers();
 
@@ -226,8 +226,8 @@ SetEventHandler (
     Tcl_Obj *newCmdObj
     )
 {
-    PS_SignalHandlers *handlersPtr;
-    PS_SignalHandler *handlerPtr;
+    EventHandlers *handlersPtr;
+    EventHandler *handlerPtr;
     SignalMapEntry *entryPtr;
     int isnew;
 
@@ -257,7 +257,7 @@ DeleteEventHandler (
     int signum
     )
 {
-    PS_SignalHandlers *handlersPtr;
+    EventHandlers *handlersPtr;
     SignalMapEntry *entryPtr;
 
     handlersPtr = GetHandlers();
@@ -275,7 +275,7 @@ GetEventHandlerCommand (
     int signum
     )
 {
-    PS_SignalHandler *handlerPtr;
+    EventHandler *handlerPtr;
 
     handlerPtr  = GetSignalHandler(signum);
     if (handlerPtr == NULL) {
@@ -315,11 +315,11 @@ DeleteThreadEvents (
 
 
 static
-PS_SignalHandler *
+EventHandler *
 GetSignalHandler(
     int signum)
 {
-    PS_SignalHandlers *handlersPtr;
+    EventHandlers *handlersPtr;
     SignalMapEntry *entryPtr;
 
     handlersPtr = GetHandlers();
