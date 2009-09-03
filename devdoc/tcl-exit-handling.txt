@@ -1,0 +1,135 @@
+** Notes on differences between classes of threads **
+
+Tcl exit finalization is complicated.
+
+First, there are two (at least conceptually) different paths
+requiting finalization:
+
+* "Application exit" when the end result of the process is a
+  call to exit() which will make the OS kick in, free any
+  memory and close all the sockets owned by the process (it's
+  not still clean whether they are flushed though).
+
+* Finalization of the Tcl as a linked library, when a process
+  which linked Tcl in, wished to stop using it.
+  As the application will continue to execute, just the Tcl
+  won't, this obviously requires full cleanup.
+
+There's another standpoint: the threads which can be somehow
+tought of as "bound" to the Tcl library (as created either by
+the Tcl itself or by the code it or extensions loaded into it
+created) can be separated in yet two other groups:
+
+* "Explicit" threads.
+  Threads controlled by some high-level code.
+  The most obvious example of this is the threads created by the
+  user's code with the help of the Thread extension.
+
+* "Hidden" (or "plumbing") threads created by the Tcl itself or
+  by extensions loaded into it to carry out tasks which are
+  supposed to happend behind the scenes.
+
+The handling of these threads with regard to the Tcl exit
+finalization is different. The proposed dichotomy is like this:
+
+* When an application has "explicit" threads, it's obviously is
+  supposed to have a device of managing these threads (with a
+  special "supervisor" thread being the most common); and this
+  device is supposed to perform proper *explicit* shutdown of
+  the managed threads when the application decides to exit (or
+  otherwise seize its execution).
+
+  Thus, a call to Tcl_Exit() from any of the threads, when
+  happens in such a scenario, can assume there is no "explicit"
+  threads executing. If this does not hold, the application is
+  broken.
+
+* When an application has "plumbing" threads...
+
+** Current Tcl exit finalization logic **
+
+Currently, when a thread calls Tcl_Exit(), the
+Tcl_FinalizeThread() (which calls thread exit callbacks) is
+called only for the current thread (which called Tcl_Exit()),
+all other threads will have no chance of finalizing themselves
+and will be eventually reaped by the exit(3) call.
+
+TODO check the differences between 8.5 and 8.6.
+
+** Proposed exit logic for posix::signal **
+
+* Require the application to perform proper high-level
+  cleanup before exit.
+  This possibly requires certain convenient way to
+  quickly remove all signal handing (reverting to the state
+  the application was it before it started to trap signals).
+
+  Possibly some kind of [posix::signal trap all {}]
+  which would promptly untrap all signals in the calling thread
+  would be just OK.
+
+* Shutdown the syncpoints manager thread in a global exit hook
+  (Tcl_CreateExitHook), *not* when the last thread loaded the
+  package performs its finalization handler -- simply because
+  in the case of spontaneously called Tcl_Exit these threads
+  won't have a chance to finalize.
+
+  This requires making sure that signals can be safely
+  processed in the absence of the syncpoints manager thread.
+  They will be lost, but must not cause a crash.
+
+  The syncpoints manager thread must be explicitly shut down
+  before the Tcl finalizes as it uses a mutex and accesses
+  other threads implicitly (via Tcl_ThreadQueueEvent).
+  See commit 3b9d246.
+
+  In any case, we don't bother with deletion of syncpoints,
+  and signal handlers: if the application which works with our
+  package wants to properly clean itself up, it is supposed
+  to explicitly untrap all signals (synchronizing this process
+  over all its threads which trap signals) and then exit safely.
+
+  Also most applications requiring signal processing will
+  possibly trap all signals they're interested in in just one
+  specific thread (possibly in main) which simplifies things for
+  the application writers.
+
+* We should still have per-thread cleanup handlers which must
+  ensure they untrap all signals trapped by themselves and
+  delete the relevant syncpoints and event handlers (as well as
+  any pending events).
+
+  At this point the syncpoint manager thread is supposed to be
+  shut down by the global exit handler so we can not fear that
+  someone will pipe events to our event queue while we're
+  cleaning up (TODO: but what happens in single-threaded apps?).
+
+  TODO check if the thread might have any pending events when
+  its exit handler is called.
+
+Obviously, we should require from the low-level package users
+(such as other Tcl extensions using our package) to perform
+proper cleanup of trapped signals upon their own cleanup.
+
+** Reverting signal handlers **
+
+One interesting issue is into what state to revert untrapped
+signals.
+
+Possibly we have to store the original signal's disposition in
+its syncpoint and restore it exactly as it existed before we
+started to trap it.
+
+** Resources **
+
+ID: 2001201
+Tcl_Exit() shouldn't call the full Tcl_Finalize() path
+
+ID: 486399
+Panic on exit before all threads returned
+(see also references to other bugs in the discussion).
+
+[TCLCORE] Finalization vs. Exit
+by Alexandre Ferrieux
+http://aspn.activestate.com/ASPN/Mail/Message/tcl-core/3715242
+
