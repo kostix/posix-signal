@@ -246,6 +246,52 @@ _UnlockSyncPoints (void)
     Tcl_MutexUnlock(&spointsLock);
 }
 
+/* FIXME in theory, we must not serve any signals
+ * while running this block to avoid double locks
+ * on spointsLock. But as this function is supposedly
+ * only run when the package is being initialized
+ * for the first time, and all the threads loading
+ * this package are synchronized over its
+ * common initialization part, we can possibly assume
+ * no signals will be served by this thread while
+ * it executes this function */
+
+/* FIXME also it's interesting whether the signal
+ * mask is inherited by the created threads.
+ * If this is true, we could call BlockAllSignals()
+ * here and get the syncpoints manager thread
+ * inherit this disposition, and the simply
+ * call UnblockAllSignals() when the manager thread
+ * reports back */
+#ifdef TCL_THREADS
+static
+void
+CreateManagerThread (void)
+{
+    Tcl_ThreadId threadId;
+    int res;
+
+    Tcl_MutexLock(&spointsLock);
+
+    threadReady = 0;
+    res = Tcl_CreateThread(&threadId, &ManagerThreadProc,
+	    NULL,
+	    TCL_THREAD_STACK_DEFAULT,
+	    TCL_THREAD_NOFLAGS);
+    if (res != 0) {
+	Tcl_Panic(PACKAGE_NAME ": failed to create manager thread");
+    }
+
+    /* Wait for the manager thread to report back */
+    while (threadReady == 0) {
+	Tcl_ConditionWait(&spointsCV, &spointsLock, NULL);
+    }
+    threadReady = 0;
+
+    Tcl_MutexUnlock(&spointsLock);
+}
+#endif /* TCL_THREADS */
+
 MODULE_SCOPE
 void
 InitSyncPoints (void)
@@ -255,47 +301,7 @@ InitSyncPoints (void)
     InitSyncPointQueue(&danglingSpoints);
 
 #ifdef TCL_THREADS
-    {
-	Tcl_ThreadId threadId;
-	int res;
-
-	/* FIXME in theory, we must not serve any signals
-	 * while running this block to avoid double locks
-	 * on spointsLock. But as this function is supposedly
-	 * only run when the package is being initialized
-	 * for the first time, and all the threads loading
-	 * this package are synchronized over its
-	 * common initialization part, we can possibly assume
-	 * no signals will be served by this thread while
-	 * it executes this function */
-
-	/* FIXME also it's interesting whether the signal
-	 * mask is inherited by the created threads.
-	 * If this is true, we could call BlockAllSignals()
-	 * here and get the syncpoints manager thread
-	 * inherit this disposition, and the simply
-	 * call UnblockAllSignals() when the manager thread
-	 * reports back */
-
-	Tcl_MutexLock(&spointsLock);
-
-	threadReady = 0;
-	res = Tcl_CreateThread(&threadId, &ManagerThreadProc,
-		NULL,
-		TCL_THREAD_STACK_DEFAULT,
-		TCL_THREAD_NOFLAGS);
-	if (res != 0) {
-	    Tcl_Panic(PACKAGE_NAME ": failed to create manager thread");
-	}
-
-	/* Wait for the manager thread to report back */
-	while (threadReady == 0) {
-	    Tcl_ConditionWait(&spointsCV, &spointsLock, NULL);
-	}
-	threadReady = 0;
-
-	Tcl_MutexUnlock(&spointsLock);
-    }
+    CreateManagerThread();
 #endif /* TCL_THREADS */
 }
 
