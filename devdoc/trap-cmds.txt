@@ -1,0 +1,35 @@
+posix::signal trap Signal Script
+
+ If Signal is not trapped yet:
+  * Create syncpoint.
+  * Save the original disposition of Signal in it.
+  * Install signal handler.
+  * Install event handler.
+ Otherwise:
+  * Update event handler (and possibly target thread in syncpoint).
+
+posix::signal trap Signal {}
+
+ If Signal is not trapped yet:
+  * Do nothing.
+ Otherwise:
+  * Revert signal disposition to the saved state.
+  * Delete or orphan syncpoint.
+  * Delete or orphan event handler.
+
+posix::signal restore Signal
+
+ Same as [posix::signal trap Signal {}].
+
+posix::signal default Signal
+
+ Same as [posix::signal restore Signal],
+ but the disposition is changed to SIG_DFL
+ no matter whether the signal is currently
+ trapped or not.
+
+posix::signal ignore Signal
+
+ Same as [posix::signal default Signal],
+ but the disposition is changed to SIG_IGN.
+
