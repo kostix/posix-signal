@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "sigtables.h"
 #include "syncpoints.h"
+#include "sigmanip.h"
 #include "events.h"
 #include "trap.h"
 #include "send.h"
@@ -48,29 +49,39 @@ Signal_Command (
 }
 
 
+/* This handler is called when Tcl is about to terminate
+ * the process. This handler is called from the thread
+ * which called Tcl_Exit (or from the main thread?);
+ * no guarantee is made to properly cleanup other
+ * threads, in fact, they will not be cleaned up properly.
+ * So our tasks is just to terminate the manager thread
+ * as it uses several synchronization variables which
+ * will be cleaned up by the ongoing shutdown process
+ * (see commit 3b9d246).
+ * Note that at this point there might exist active
+ * signal handlers, and this thread can be selected
+ * by the system to serve a signal any time, so we
+ * must block all the signals before processing.
+ */
 static
 void
 PrepareShutdown (
     ClientData clientData)
 {
-    /* TODO block all signals, lock syncpoints,
-     * call something which will raise a flag
-     * "syncpoint signaling disabled". */
-
-    /* FIXME it's not yet clear whether it is
-     * safe to assume that by the time this
-     * global exit handler is called it is guaranteed
-     * that no Tcl interp is executing the code
-     * (in other threads), and that event queues in
-     * those threads are drained (i.e. the threads
-     * exist but are defunct).
-     * If it is guaranteed we can call FinalizeSyncpoints
-     * right away and per-thread exit handlers will
-     * just clean up their tables of event handlers
-     * and pending events (if it is not done by Tcl). */
+    BlockAllSignals();
+    LockSyncPoints();
+    DisableSyncpoints();
+    UnlockSyncPoints();
+    UnblockAllSignals();
 }
 
 
+/*
+ * Note that when the package usage refcount goes to 1
+ * here, we can assume no signal is being handled by our
+ * code yet and so we might omit blocking and unblocking
+ * the signals in this thread.
+ */
 static
 void
 InitPackage (void)
@@ -80,6 +91,10 @@ InitPackage (void)
     if (packageRefcount == 0) {
 	InitSignalTables();
 	InitSyncPoints();
+
+	LockSyncPoints();
+	EnableSyncpoints();
+	UnlockSyncPoints();
 
 	Tcl_CreateExitHandler(PrepareShutdown, NULL);
     }
@@ -99,6 +114,13 @@ CleanupPackage (
     --packageRefcount;
     if (packageRefcount == 0) {
 	FinalizeSyncpoints();
+	/* TODO Free all allocated data structures.
+	 * Possibly we can assume that no threads
+	 * serve any signals at this point and have
+	 * no handlers installed (this is merely
+	 * a "contract", but it possibly can be
+	 * enforced if we arrange for the threads'
+	 * cleanup handlers to be called before this one. */
     }
 
     Tcl_MutexUnlock(&pkgInitLock);

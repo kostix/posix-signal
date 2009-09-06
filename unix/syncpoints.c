@@ -23,6 +23,7 @@ typedef struct SyncPoint SyncPoint;
 
 static SignalMap syncpoints;
 static Queue danglingSpoints;
+static int signalingEnabled = 0;
 TCL_DECLARE_MUTEX(spointsLock);
 
 #ifdef TCL_THREADS
@@ -256,6 +257,9 @@ _UnlockSyncPoints (void)
  * no signals will be served by this thread while
  * it executes this function */
 
+/*
+ * Assume the mutex spointsLock is held
+ */
 /* FIXME also it's interesting whether the signal
  * mask is inherited by the created threads.
  * If this is true, we could call BlockAllSignals()
@@ -271,8 +275,6 @@ CreateManagerThread (void)
     Tcl_ThreadId threadId;
     int res;
 
-    Tcl_MutexLock(&spointsLock);
-
     threadReady = 0;
     res = Tcl_CreateThread(&threadId, &ManagerThreadProc,
 	    NULL,
@@ -287,32 +289,17 @@ CreateManagerThread (void)
 	Tcl_ConditionWait(&spointsCV, &spointsLock, NULL);
     }
     threadReady = 0;
-
-    Tcl_MutexUnlock(&spointsLock);
 }
 #endif /* TCL_THREADS */
 
-MODULE_SCOPE
-void
-InitSyncPoints (void)
-{
-    InitSignalMap(&syncpoints);
-
-    InitSyncPointQueue(&danglingSpoints);
-
+/*
+ * Assume the mutex spointsLock is held
+ */
 #ifdef TCL_THREADS
-    CreateManagerThread();
-#endif /* TCL_THREADS */
-}
-
+static
 void
-FinalizeSyncpoints (void)
+ShutdownManagerThread (void)
 {
-    BlockAllSignals();
-
-#ifdef TCL_THREADS
-    Tcl_MutexLock(&spointsLock);
-
     /* Request the manager thread to terminate */
     shutdownRequested = 1;
     condReady = 1;
@@ -326,23 +313,50 @@ FinalizeSyncpoints (void)
     while (threadReady == 0) {
 	Tcl_ConditionWait(&spointsCV, &spointsLock, NULL);
     }
-
-    Tcl_MutexUnlock(&spointsLock);
+}
 #endif /* TCL_THREADS */
 
-    UnblockAllSignals();
+void
+EnableSyncpoints (void)
+{
+#ifdef TCL_THREADS
+    CreateManagerThread();
+#else
+    Tcl_AsyncCreate(activator);
+#endif
+    signalingEnabled = 1;
+}
 
-    /* TODO free existing syncpoints.
-     * Note that this is a complicated problem
-     * as we must ensure no thread is accessing
-     * this data.
-     * In principle, this function should only be
-     * called when the last thread using this package
-     * is about to be destroyed, so we can assume
-     * only this thread + the manager thread exist,
-     * and only they need cooperation.
-     * Also any signal handling in both threads
-     * should be disabled somehow */
+void
+DisableSyncpoints (void)
+{
+    signalingEnabled = 0;
+#ifdef TCL_THREADS
+    ShutdownManagerThread();
+#else
+    Tcl_AsyncDestroy(activator);
+#endif
+}
+
+MODULE_SCOPE
+void
+InitSyncPoints (void)
+{
+    InitSignalMap(&syncpoints);
+
+    InitSyncPointQueue(&danglingSpoints);
+}
+
+void
+FinalizeSyncpoints (void)
+{
+    /* TODO free any memory allocated by InitSyncPoints().
+     * With the current style of finalization
+     * we can possibly assume no signals are trapped
+     * at the time this function is called
+     * and the syncpoints manager thread is not present,
+     * so we're free to mess with the memory allocated
+     * by this module. */
 }
 
 SyncPointMapEntry
@@ -420,6 +434,8 @@ SignalSyncPoint (
     )
 {
     SyncPoint *spointPtr;
+
+    if (!signalingEnabled) return;
 
     spointPtr = GetSyncPoint(signum);
 

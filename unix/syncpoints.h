@@ -26,6 +26,14 @@ void
 FinalizeSyncpoints (void);
 
 MODULE_SCOPE
+void
+EnableSyncpoints (void);
+
+MODULE_SCOPE
+void
+DisableSyncpoints (void);
+
+MODULE_SCOPE
 SyncPointMapEntry
 FindSyncPoint (
     int signum);
