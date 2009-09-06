@@ -1,3 +1,34 @@
+* Implement controlling signal disposition
+  (see devdoc/trap-cmds.txt).
+
+* Implement [block] (and [unblock]?).
+  They should possibly accept an open list of
+  arguments which is to be interpreted as signals.
+
+  Note that the behaviour of sigprocmask() should
+  be closely modelled, i.e. there should be a way
+  to replace the blocked signals with the specified
+  list, add the specified signals to the list of
+  blocked signals, remove them and query the
+  current list of blocked signals.
+
+  Possibly subcommands would do, like this:
+  block replace SIGFOO SIGBAR...
+  block add SIGFOO SIGBAR...
+  block remove SIGFOO SIGBAR...
+  block replace {} ;# unblock all
+  block remove all ;# unblock all
+
+  Possibly "set" is more sensible than "replace",
+  like this:
+  block set SIGFOO SIGBAR...
+  block set {} ;# unblock all
+
+  [unblock] could be used as a more human-readable
+  alternative to certain [block] variants, like this:
+  unblock SIGFOO SIGBAR... ;# same as [block remove ...]
+  unblock all ;# same as [block replace {}]
+
 * Investigate possibility to improve implementation
   of signal tables.
   Factoring out their handling to a common
