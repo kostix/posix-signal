@@ -6,7 +6,7 @@
 #include "syncpoints.h"
 #include "sigmanip.h"
 #include "events.h"
-#include "trap.h"
+#include "sigaction.h"
 #include "send.h"
 #include "info.h"
 

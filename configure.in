@@ -63,7 +63,7 @@ TEA_SETUP_COMPILER
 # and PKG_TCL_SOURCES.
 #-----------------------------------------------------------------------
 
-TEA_ADD_SOURCES([unix/posix-signal.c unix/sigtables.c unix/trap.c
+TEA_ADD_SOURCES([unix/posix-signal.c unix/sigtables.c unix/sigaction.c
     unix/syncpoints.c unix/events.c unix/send.c unix/utils.c
     unix/info.c unix/sigobj.c unix/sigmap.c unix/sigmanip.c
     unix/queue.c])

@@ -5,7 +5,7 @@
 #include "events.h"
 #include "utils.h"
 #include "sigmanip.h"
-#include "trap.h"
+#include "sigaction.h"
 
 
 static void LockWorld (void);

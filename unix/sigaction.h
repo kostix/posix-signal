@@ -1,4 +1,4 @@
-#ifndef __POSIX_SIGNAL_TRAP_H
+#ifndef __POSIX_SIGNAL_SIGACTION_H
 
 int
 Command_Trap (
@@ -8,7 +8,7 @@ Command_Trap (
     Tcl_Obj *const objv[]
     );
 
-#define __POSIX_SIGNAL_TRAP_H
-#endif /* __POSIX_SIGNAL_TRAP_H */
+#define __POSIX_SIGNAL_SIGACTION_H
+#endif /* __POSIX_SIGNAL_SIGACTION_H */
 
 /* vim: set ts=8 sts=4 sw=4 sts=4 noet: */
