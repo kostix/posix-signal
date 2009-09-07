@@ -16,6 +16,7 @@ struct SyncPoint {
 #endif
     int signum;
     int signaled;
+    ClientData clientData;
     struct SyncPoint *nextPtr;
 };
 
@@ -44,7 +45,8 @@ static void InitSyncPointQueue (Queue *queuePtr);
 static
 SyncPoint*
 AllocSyncPoint (
-    int signum)
+    int signum,
+    ClientData clientData)
 {
     SyncPoint *spointPtr;
 
@@ -53,9 +55,10 @@ AllocSyncPoint (
 #ifdef TCL_THREADS
     spointPtr->threadId = Tcl_GetCurrentThread();
 #endif
-    spointPtr->signum   = signum;
-    spointPtr->signaled = 0;
-    spointPtr->nextPtr  = NULL;
+    spointPtr->signum     = signum;
+    spointPtr->signaled   = 0;
+    spointPtr->clientData = clientData;
+    spointPtr->nextPtr    = NULL;
 
     return spointPtr;
 }
@@ -369,6 +372,7 @@ FindSyncPoint (
 SyncPointMapEntry
 AcquireSyncPoint (
     int signum,
+    ClientData clientData,
     int *isnewPtr)
 {
     SignalMapEntry *entryPtr;
@@ -377,19 +381,20 @@ AcquireSyncPoint (
     entryPtr = CreateSigMapEntry(&syncpoints, signum, isnewPtr);
 
     if (*isnewPtr) {
-	spointPtr = AllocSyncPoint(signum);
+	spointPtr = AllocSyncPoint(signum, clientData);
 	SetSigMapValue(entryPtr, spointPtr);
     } else {
 	Tcl_ThreadId thisThreadId;
 	spointPtr = GetSigMapValue(entryPtr);
 	thisThreadId = Tcl_GetCurrentThread();
 	if (spointPtr->signaled == 0) {
-	    spointPtr->threadId = thisThreadId;
+	    spointPtr->threadId   = thisThreadId;
+	    spointPtr->clientData = clientData;
 	} else {
 	    if (spointPtr->threadId != thisThreadId) {
 		SyncPoint *newPtr;
 		QueuePush(&danglingSpoints, spointPtr);
-		newPtr = AllocSyncPoint(signum);
+		newPtr = AllocSyncPoint(signum, clientData);
 		SetSigMapValue(entryPtr, newPtr);
 	    } else {
 		/* Do nothing -- the syncpoint is already ours */

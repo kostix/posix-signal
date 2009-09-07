@@ -42,6 +42,7 @@ MODULE_SCOPE
 SyncPointMapEntry
 AcquireSyncPoint (
     int signum,
+    ClientData clientData,
     int *isnewPtr);
 
 MODULE_SCOPE

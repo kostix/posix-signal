@@ -99,7 +99,7 @@ TrapSet (
 	int isnew;
 
 	LockWorld();
-	spoint = AcquireSyncPoint(signum, &isnew);
+	spoint = AcquireSyncPoint(signum, NULL, &isnew);
 	if (isnew) {
 	    Tcl_SetErrno(0);
 	    res = InstallSignalHandler(signum);
